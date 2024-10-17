@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+*.egg-info/
+dist/
+build/
+*.log
+*.sqlite3
+
+# React
+node_modules/
+build/
+*.env
+*.local
+.DS_Store
+package-lock.json
+yarn-error.log
+
+# VSCode
+.vscode/
+*.code-workspace
+
+# MacOS
+.DS_Store
+
+# System files
+Thumbs.db
+ehthumbs.db
+Icon?
+Desktop.ini
+
+# Others
+*.bak
+*.tmp
