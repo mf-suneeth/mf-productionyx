@@ -9,7 +9,36 @@ CORS(app)  # This will allow all domains
 HEADERS = ["EX00",	"EX01",	"EX03",	"EX04",	"Compounding",	"Fiber", "Other"]
 PRODUCTION_MATRIX = {}
 
-
+ingest2 = """	Week #		EX00	EX01	EX03	EX04	Compounding	Fiber	Other
+	40	Monday							
+1		Tuesday	Copper		ONYX	ONYX		CFU 2CFA 12CAR 4KEV HST 5FIB	OFR unload
+2		Wednesday	Copper		ONYX	ONYX		CFU 2CFA 12CAR 4KEV HST 5FIB	UL Audit
+3		Thursday	Copper		ONYX	ONYX	D2v2	CFU 2CFA 12CAR 4KEV HST 5FIB	
+4		Friday 			ONYX	ONYX	D2v2	CFU 2CFA 12CAR 4KEV HST 5FIB	
+			EX00	EX01	EX03	EX04	Compounding	Fiber	Other
+7	41	Monday			ONYX	ONYX	D2v2	CFU 2CFA 12CAR 4KEV HST 5FIB	
+8		Tuesday	ESDv2		ONYX	ONYX		CFU 2CFA 12CAR 4KEV HST 5FIB	
+9		Wednesday	ESDv2		ONYX	ONYX	D2v2	CFU 2CFA 12CAR 4KEV HST 5FIB	
+10		Thursday	ESDv2		ONYX	ONYX	D2v2	CFU 2CFA 12CAR 4KEV HST 5FIB	
+11		Friday 	ESDv2		ONYX	ONYX		CFU 2CFA 12CAR 4KEV HST 5FIB	
+			EX00	EX01	EX03	EX04	Compounding	Fiber	Other
+14	42	Monday	D2v2 STG2		ONYX	ONYX	17-4v2	CFU 2CFA 12CAR 4KEV HST 5FIB	
+15		Tuesday	D2v2 STG2		ONYX	ONYX	17-4v2	CFU 2CFA 12CAR 4KEV HST 5FIB	
+16		Wednesday	G16		ONYX	ONYX	17-4v2	CFU 2CFA 12CAR 4KEV HST 5FIB	
+17		Thursday	G16		ONYX	ONYX	17-4v2	CFU 2CFA 12CAR 4KEV HST 5FIB	
+18		Friday	G16		ONYX	ONYX	17-4v2	CFU 2CFA 12CAR 4KEV HST 5FIB	NYW
+			EX00	EX01	EX03	EX04	Compounding	Fiber	Other
+21	43	Monday	G16		ONYX	ONYX	17-4v2	CFU 2CFA 12CAR 4KEV HST 5FIB	
+22		Tuesday 	G16		ONYX	ONYX	17-4v2	CFU 2CFA 12CAR 4KEV HST 5FIB	
+23		Wednesday	D2v2		ONYX	ONYX	17-4v2	CFU 2CFA 12CAR 4KEV HST 5FIB	
+24		Thursday	D2v2		ONYX	ONYX	17-4v2	CFU 2CFA 12CAR 4KEV HST 5FIB	
+25		Friday	D2v2		ONYX	ONYX	17-4v2	CFU 2CFA 12CAR 4KEV HST 5FIB	
+			EX00	EX01	EX03	EX04	Compounding	Fiber	Other
+28	44	Monday	17-4v2STG2		ONYX	ONYX		CFU 2CFA 12CAR 4KEV HST 5FIB	
+29		Tuesday 	17-4v2STG2		ONYX	ONYX		CFU 2CFA 12CAR 4KEV HST 5FIB	
+30		Wednesday	17-4v2STG2		ONYX XL	ONYX		CFU 2CFA 12CAR 4KEV HST 5FIB	*LOAD XL*
+31		Thursday	17-4v2STG2		ONYX XL	ONYX		CFU 2CFA 12CAR 4KEV HST 5FIB	
+		Friday							"""
 ingest = """ 	 Week #	 	 EX00	 EX01	 EX03	 EX04	 Compounding	 Fiber	 Other
 	9	Monday							
 		Tuesday							
@@ -53,6 +82,7 @@ def parse_fiber(req):
 
     return fibers_out
 
+
 @app.route('/api/data', methods=['GET'])
 def get_data():
     """Endpoint for testing the backend."""
@@ -61,7 +91,7 @@ def get_data():
 @app.route('/api/cal', methods=['GET'])
 def produce_data():
     """Produce the data based on the ingested input."""
-    schedule = [line.split('\t') for line in ingest.split('\n')]
+    schedule = [line.split('\t') for line in ingest2.split('\n')]
     month_schedule = {}
     material_freq = {}
 
@@ -71,9 +101,13 @@ def produce_data():
 
         # Populate week
         week_stor = week if week else week_stor
+
+        # Handle grey days
+
         
         if date and day.strip():
             day_key = f"{date} {day}"
+
             month_schedule[day_key] = {
                 "Week": week_stor,
                 "EX00": {EX00: ""} if EX00 else {},
@@ -95,6 +129,21 @@ def produce_data():
                         else:
                             material_freq[material][0] += 1
                             material_freq[material][1] += int(goal) if goal else 0
+            
+            if day.strip() == "Friday":
+                for day in ["Saturday", "Sunday"]:
+                    date = int(date) + 1
+                    day_key = f"{date} {day}"
+                    month_schedule[day_key] = {
+                        "Week": week_stor,
+                        "EX00": {},
+                        "EX01": {},
+                        "EX03": {},
+                        "EX04": {},
+                        "Compounding": {},
+                        "Fiber": {},
+                        "Other": {},
+                    }                  
 
     # Prepare production matrix
     now = datetime.now()

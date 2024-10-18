@@ -30,17 +30,27 @@ function FetchMonth() {
   // Helper to get a calendar grid
   const renderCalendar = () => {
     const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
+    const encodeSet = Object.keys(data)
+
     const calendar = Array.from({ length: daysInMonth }, (_, i) => {
       const dateKey = `${i + 1} ${new Date().toLocaleString('default', { month: 'long' })}`;
+      const encodeKey = encodeSet[i]
       return (
         <div key={dateKey} className="calendar-day">
+          {/* <div>{data["1 Tuesday"]["EX00"]["CFA"]}</div> */}
           <h4>{dateKey}</h4>
-          {data[dateKey] ? (
+          <div>{encodeKey}</div>
+          {data[encodeKey] ? (
             <ul>
-              {Object.entries(data[dateKey]).map(([process, details]) => (
-                <li key={process}>
-                  <strong>{process}</strong>: {details}
-                </li>
+              {Object.entries(data[encodeKey]).map(([process, details]) => (
+                <div key={process}>
+                  <strong>{process}</strong>: 
+                  {typeof details === 'object' ? (
+                    <span>{JSON.stringify(details)}</span> // Or render specific properties
+                  ) : (
+                    details
+                  )}
+                </div>
               ))}
             </ul>
           ) : (
