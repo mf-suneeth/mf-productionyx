@@ -1,0 +1,11 @@
+{
+    "signature" : "2024-08",
+    "materials" : ["ONX", "D2V2", "OXL", "ONX", "CPP"],
+    "goals": {
+        "ONX" : 1000,
+        "D2V2" : 1000,
+        "OXL" : 6000,
+        "ONX" : 1000,
+        "CPP" : 1000
+    }
+}
