@@ -16,7 +16,10 @@ const materialColor = {
   KEV: "2E2830",
   CAR: "16131A",
   "625": "47169C",
+  "G16" :"D8D0C1",
+  "172" : "3333FF"
 };
+
 
 const Tooltip = ({ entry, position }) => {
   return (
@@ -101,8 +104,8 @@ function Production() {
   const [loading, setLoading] = useState(true);
   const [stream, setStream] = useState(null);
   const [material, setMaterial] = useState(null);
-  const [startDate, setStartDate] = useState("2024-11-12");
-  const [endDate, setEndDate] = useState("2024-11-13");
+  const [startDate, setStartDate] = useState("2024-10-31");
+  const [endDate, setEndDate] = useState("2024-11-01");
 
   const handleStartDateChange = (value) => {
     console.log(value);
@@ -171,7 +174,7 @@ function Production() {
   useEffect(() => {
     fetchData(
       `http://localhost:5000/api/current/compounding?start_date=${startDate}&end_date=${endDate}`,
-      setCompoundingData
+      (data) => setCompoundingData(data)
     );
   }, [startDate, endDate]);
 
@@ -203,7 +206,7 @@ function Production() {
     scheduleData && (
       <div
         className="production-root"
-        style={{ backgroundColor: "black", color: "white", height: "200vh", padding: "3vw" }}
+        style={{ backgroundColor: "black", color: "white", height: "auto", padding: "3vw" }}
       >
         <div
           className="selector-root"
@@ -375,7 +378,7 @@ function Production() {
                         }}
                         title={JSON.stringify(entry, null, 2)} // Tooltip content
                       >
-                       {entry[0]}s
+                       {entry[0]}
                       </div>
                     ))}
                   </div>
@@ -384,15 +387,15 @@ function Production() {
           </div>
         </div>
 
-        <div className="fiber-root">
+        <div className="compounding-root">
           <div
             className="page-name"
             style={{ fontSize: "3rem", fontWeight: 400, paddingBottom: "3rem", paddingTop: "8rem" }}
           >
             Compounding:
           </div>
-          <div className="filtered-data">
-            {compoundingData?.scheduled?.map((entry, index) => (
+          <div className="filtered-data" style={{display: "flex", flexDirection: "row", flexWrap: "wrap",  justifyContent:"space-between", rowGap: "1rem"}}>
+            {/* {compoundingData?.scheduled?.map((entry, index) => (
               <div
                 key={index}
                 style={{
@@ -400,13 +403,62 @@ function Production() {
                   borderBottom: "1px solid white",
                 }}
               >
-                <div>ID: {entry.batch_id}</div>
-                <div>Batch: {entry.batch_num}</div>
-                <div>LOT: {entry.lot_id}</div>
-                <div>Mass: {entry.mass}</div>
-                <div>Stage: {entry.stage}</div>
+                <div>ID: {entry.id}</div>
+                <div>Batch: {entry.date}</div>
+                <div>LOT: {entry.line}</div>
+                <div>Mass: {entry.material_id}</div>
+                <div>Stage: {entry.shift}</div>
               </div>
-            ))}
+            ))} */}
+            {compoundingData && Object.keys(compoundingData?.produced).map((entry, index) => (
+              <div className="" style={{flexBasis: "24%", border: "1px solid grey", borderRadius: "0.5rem"}}>
+                <div key={index} className="" style={{ padding: "1.5rem", borderRadius: "0.5rem", backgroundColor: "#141414", height: "auto"}}>
+                  {/* <div className="">   {(compoundingData.produced[entry]['material_id'])}</div> */}
+
+                  <div className="" style={{fontSize: "1.5rem", paddingBottom: "2rem", paddingTop: "1rem"}}>{entry}</div>
+                  <div className="" style={{fontSize: "1rem", paddingBottom: "1rem", display: "flex", justifyContent: "space-between", color: "grey"}}>
+                      <div className="">  {(compoundingData.produced[entry]['date'])}</div>
+                      <div className="">   {(compoundingData.produced[entry]['raw_powder'])}</div>
+                      <div className="">   {(compoundingData.produced[entry]['mass'])}</div>
+                  </div>
+
+                  <div className="" style={{display: "flex", flexDirection:"column", gap: "1rem"}}>
+                  
+                  {compoundingData.produced[entry]?.historical.map(
+                      ([date, batchNum, stage, batchId, mass], index) => (
+                        <div key={index} style={{display: "flex", justifyContent: "space-between", color: "grey"}}>
+                          <div className="">{date}</div>
+                          <div className="">{stage}</div>
+                          <div className="">{batchNum}</div>
+                          {/* <div className="">{batchId}</div> */}
+                          <div className="">{mass}</div>
+                        </div>
+                      )
+                    )}
+
+                  {compoundingData.produced[entry]?.current.map(
+                      ([date, batchNum, stage, batchId, mass], index) => (
+                        <div key={index} style={{display: "flex", justifyContent: "space-between"}}>
+                          <div className="">{date}</div>
+                          <div className="">{stage}</div>
+                          <div className="">{batchNum}</div>
+                          {/* <div className="">{batchId}</div> */}
+                          <div className="">{mass}</div>
+                        </div>
+                      )
+                    )}
+
+
+                  </div>
+
+                </div>
+
+
+              </div>
+            ))
+
+            }
+            
           </div>
         </div>
       </div>

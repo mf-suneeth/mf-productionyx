@@ -7,6 +7,9 @@ import GetMonth from "../js/getMonth";
 import ShowMonth from "./showMonth";
 import Production from "./Production";
 import Documentation from "./docString";
+import Extrusion from "./Extrusion";
+
+// gen t
 
 
 function App() {
@@ -31,6 +34,9 @@ function App() {
               <Link to="/production">Production</Link>
             </li>
             <li>
+              <Link to="/extrusion">Extrusion</Link>
+            </li>
+            <li>
               <Link to="/documentation">Documentation</Link>
             </li>
           </ul>
@@ -44,6 +50,7 @@ function App() {
           <Route path="/get-month" element={<GetMonth />} />
           <Route path="/show-month" element={<ShowMonth />} />
           <Route path="/production" element={<Production />} />
+          <Route path="/extrusion" element={<Extrusion />} />
           <Route path="/documentation" element={<Documentation />} />
         </Routes>
       </div>

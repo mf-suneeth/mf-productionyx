@@ -116,7 +116,7 @@ def get_current():
         try:
             start_date = datetime.strptime(start_date, '%Y-%m-%d')
             end_date = datetime.strptime(end_date, '%Y-%m-%d')
-            print(start_date, end_date)
+            # print(start_date, end_date)
         except ValueError:
             return jsonify({"error": "Invalid date format. Use YYYY-MM-DD."}), 400
 
@@ -312,13 +312,14 @@ def get_current_compounding():
         end_date = request.args.get('end_date')
 
         # Validate and parse dates
-        if not start_date or not end_date:
+        if not start_date and end_date:
             return jsonify({"error": "start_date and end_date are required"}), 400
 
         try:
             start_date = datetime.strptime(start_date, '%Y-%m-%d')
             end_date = datetime.strptime(end_date, '%Y-%m-%d')
-            print(start_date, end_date)
+            
+
         except ValueError:
             return jsonify({"error": "Invalid date format. Use YYYY-MM-DD."}), 400
 
@@ -327,39 +328,92 @@ def get_current_compounding():
         cursor = cnx.cursor()
 
         # Query to select data within the date range
-        query = """
+        query_1 = """
             SELECT 
                 id,
-                DATE_FORMAT(date, '%Y-%m-%d') AS date,
+                DATE_FORMAT(date, %s) AS date,
                 shift,
                 line,
                 material_id
             FROM production_schedule
-            WHERE date >= %s AND date < %s AND (line = 'FIBER' OR line = 'COMPOUNDING')
+            WHERE date >= %s AND date < %s AND line LIKE 'CMP%'
         """
 
-        cursor.execute(query, (start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d')))
-        # print(cursor.fetchall())
+        cursor.execute(query_1, ('%Y-%m-%d', start_date, end_date))
 
+        # print(start_date, end_date)
+
+        columns_1 = [desc[0] for desc in cursor.description]  # Get column names
+        results_1 = [dict(zip(columns_1, row)) for row in cursor.fetchall()]
+
+
+        query_2 = """
+            SELECT DATE_FORMAT(cl.created_at, %s) as lot_date, cl.material_id, cl.lot_id, cl.mass as lot_mass, cl.raw_powder, cb.batch_id, cb.stage, cb.batch_num, DATE_FORMAT(cb.created_at, %s) as batch_date, cb.mass as batch_mass FROM compounding_lots as cl
+            JOIN compounding_batches as cb ON cb.lot_id = cl.lot_id
+            WHERE cl.lot_id IN
+                (SELECT cb.lot_id
+                FROM compounding_batches as cb
+                WHERE cb.created_at LIKE %s
+                ORDER BY lot_id, batch_id)
+        """
+        
+        start_date = start_date.strftime('%Y-%m-%d')
+
+        cursor.execute(query_2, ('%Y-%m-%d', '%Y-%m-%d', f"{start_date}%",))
+        
         # Fetch results and process them into a JSON-friendly format
-        columns = [desc[0] for desc in cursor.description]  # Get column names
-        results = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        columns_2 = [desc[0] for desc in cursor.description]  # Get column names
+        results_2 = [dict(zip(columns_2, row)) for row in cursor.fetchall()]
+
+        
+        group_by_lots = {}
+        for obj in results_2:
+            # print(obj)
+            batch_info = [obj['batch_date'], obj['batch_num'], obj['stage'], obj['batch_id'], obj['batch_mass']]
+
+
+
+            if obj['lot_id'] in group_by_lots:
+                # just append the subcontainers
+                
+
+
+                if obj['batch_date'] == start_date:
+                    group_by_lots[obj['lot_id']]['current'].append(batch_info)
+                else:
+                    group_by_lots[obj['lot_id']]['historical'].append(batch_info)
+
+
+                pass
+            else:
+                historical = []
+                current = []
+
+                if obj['batch_date'] == start_date:
+                    current.append(batch_info)
+                else:
+                    historical.append(batch_info)
+
+                # build the subcontainers
+                group_by_lots[obj['lot_id']] = {
+                    'material_id' : obj['material_id'],
+                    "mass" : obj['lot_mass'],
+                    'date' : obj['lot_date'],
+                    'raw_powder' : obj['raw_powder'],
+                    'historical' : historical,
+                    'current' : current
+                }
+                pass
+                
+    
+
 
 
         # Close cursor and connection
         cursor.close()
         cnx.close()
 
-        # Example goals
-        goals = {"ONX": 8500, "OXL": 60, "OFR": 340, "172": 990}
-
-        # Build frequency table
-        frequency = {}
-        for item in results:
-            if "material_id" in item:
-                frequency[item["material_id"]] = frequency.get(item["material_id"], 0) + 1
-
-        # return jsonify({"scheduled": results, "goals": goals, "frequency": frequency})
+        return jsonify({"scheduled": results_1, "produced": group_by_lots, "extra": results_2})
 
     except Exception as e:
         print(f"Error: {e}")
@@ -656,6 +710,7 @@ def overwrite_month():
         "D2V2": "D2S",
         "17-4V2STG2": "172",
         "17-4V2" : "17F",
+        "17-4V2?" : "17F",
         "ONYX FR" : "OFR",
         "INCONEL" : "625"
     }
@@ -687,13 +742,13 @@ def overwrite_month():
             date = str(date).zfill(2)
 
             for line_id, material in translate_line_material.items():
+                # print(line_id)
                 ## imporove filtering here
                 if not material and line_id != "Fiber":
                     continue
 
                 line_id = format_process_key[line_id] if line_id in format_process_key else line_id
                 
-
                 for shift in shifts:
                     entry_date = f"{signature}-{date}"
                     entry_id = f"{entry_date}_{shift}_{line_id.upper()}"
@@ -780,5 +835,104 @@ def delete_entries_in_month():
         if cnx:
             cnx.close()
 
+
+@app.route('/api/extruder', methods=['GET'])
+def get_extruder():
+    """
+    Endpoint for retrieving the daily extrusion data.
+    
+    This function retrieves extrusion data for the current month (or a specified date range),
+    counts the occurrences of each status (gs, qc, sc), and returns the results in JSON format.
+    
+    Returns:
+    json: A response containing the extrusion data.
+    """
+    try:
+        cnx = msc.connect(**IGNITION_DB_CLUSTER)
+        cursor = cnx.cursor()
+
+        start_date = "2024-11-25"
+        end_date = "2024-11-26"
+
+        query_1 = """
+            SELECT 
+                spool_id, 
+                failure_mode, 
+                meters_on_spool, 
+                line_id,
+                status, 
+                DATE_FORMAT(start_time, %s) AS start_time, 
+                material_specs.material,
+                load_id
+            FROM extrusion_runs
+            INNER JOIN material_specs ON material_specs.material_id = extrusion_runs.material_id
+            WHERE start_time >= %s AND start_time < %s
+            AND line_id = %s
+            ORDER by start_time desc
+        """
+        cursor.execute(query_1, ('%Y-%m-%d %H:%i:%s', start_date, end_date, "EX03"))
+
+        # zip the results into json
+        columns_1 = [desc[0] for desc in cursor.description]  # Get column names
+        results_1 = [dict(zip(columns_1, row)) for row in cursor.fetchall()]
+
+        # get frequency of failures 
+        # print(results_1)
+        failure_mode_frequency = {}
+        ovens_load = {}
+        campaign_statistics = {}
+
+
+        # get averages
+        for row in results_1:
+            if "failure_mode" in row and row["failure_mode"]:
+                if row["failure_mode"] not in failure_mode_frequency:
+                    failure_mode_frequency[row["failure_mode"]] = [row["spool_id"]]
+                else:
+                    failure_mode_frequency[row["failure_mode"]].append(row["spool_id"])
+            if "load_id" in row and row["load_id"]:
+                if row["load_id"] not in ovens_load:
+                    ovens_load[row["load_id"]] = [row["load_id"]]
+                else:
+                    ovens_load[row["load_id"]].append(row["load_id"])
+        
+        # determine ovens availability and oven loads ... 
+
+        query_2 = """
+        SELECT DISTINCT o1.oven_name
+            FROM ovens o1
+            LEFT JOIN (
+                SELECT DISTINCT oven_name
+                FROM ovens
+                WHERE unload_time IS NULL
+            ) o2 ON o1.oven_name = o2.oven_name
+            WHERE o1.oven_name IS NOT NULL AND o2.oven_name IS NULL"""
+        
+        cursor.execute(query_2)
+
+
+        campaign_statistics["ovens"] = {
+            "available" : [row[0] for row in cursor.fetchall()],
+            "full" : int(len(results_1) / 66),
+            "remainder" : len(results_1) % 66
+        }
+
+        
+
+
+
+                
+        cursor.close()
+        cnx.close()
+
+        return jsonify({"produced": results_1, "failures" : failure_mode_frequency, "statistics" : campaign_statistics, "ovens": ovens_load})
+
+
+    except Exception as e:
+        print(f"Error: {e}")
+        return jsonify({"error": "An unknown error occurred", "details": str(e)}), 500
+
 if __name__ == '__main__':
     app.run(debug=True)
+
+
