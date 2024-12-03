@@ -3,6 +3,8 @@ from flask_cors import CORS
 import json
 from datetime import datetime, timedelta
 import base64
+import re
+
 
 
 
@@ -552,6 +554,10 @@ def get_current_day_extrusion():
         print(f"Error: {e}")
         return jsonify({"error": "An unknown error occurred", "details": str(e)}), 500
 
+
+
+
+
 @app.route('/api/current/goals', methods=['GET'])
 def get_current_day_goals(day, line, material):
     """
@@ -810,6 +816,7 @@ def delete_entries_in_month():
 
     if not start_date or not end_date:
         return jsonify({"error": "Both start_date and end_date are required."}), 400
+    
 
     try:
         cnx = msc.connect(**IGNITION_DB_CLUSTER)
@@ -835,6 +842,18 @@ def delete_entries_in_month():
         if cnx:
             cnx.close()
 
+def validate_dates(start_date, end_date):
+    try:
+        # Parse the strings into datetime objects
+        start = datetime.strptime(start_date, "%Y-%m-%d")
+        end = datetime.strptime(end_date, "%Y-%m-%d")
+
+        # Check if start_date is before or equal to end_date
+        if start > end:
+            return "Error: Start date cannot be after end date."
+        return True
+    except ValueError as e:
+        return False
 
 @app.route('/api/extruder', methods=['GET'])
 def get_extruder():
@@ -847,30 +866,60 @@ def get_extruder():
     Returns:
     json: A response containing the extrusion data.
     """
+    line_id = request.args.get('line_id')  # Get 'line_id' from query parameters
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+
+    start_date = "2024-10-30"
+    end_date = "2024-10-31"
+    
+    if not line_id:
+        return jsonify({"error": "line_id parameter is required"}), 400
+    
+    if not start_date or not end_date:
+        return jsonify({"error:" : "both start_date and end_date parameters are required"}), 400
+    
+    if not validate_dates(start_date, end_date):
+        return jsonify({"error:" : "Illegal date format"}), 400
+
+
+    
+    
+    if not re.match(r'^[A-Za-z]{2}\d{2,4}$', line_id):
+        return jsonify({"error": "Invalid line_id format. Must be in the format EX**."}), 400
+    
     try:
         cnx = msc.connect(**IGNITION_DB_CLUSTER)
         cursor = cnx.cursor()
 
-        start_date = "2024-11-25"
-        end_date = "2024-11-26"
-
         query_1 = """
             SELECT 
+                extrusion_runs.line_id,
                 spool_id, 
+                meters_on_spool,
+                meters_scanned,
+                volume,
+                DATE_FORMAT(logging_time, %s) AS logging_time,
+                DATE_FORMAT(run_time, %s) AS run_time,
                 failure_mode, 
-                meters_on_spool, 
-                line_id,
+                line_speed,
+                avg_cs_xx,
+                avg_cs_xy,
+                avg_cs_yy,
                 status, 
                 DATE_FORMAT(start_time, %s) AS start_time, 
                 material_specs.material,
-                load_id
+                load_id,
+                filament_lot_changes.filament_lot,
+                filament_lot_changes.feedstock_lot_id
             FROM extrusion_runs
             INNER JOIN material_specs ON material_specs.material_id = extrusion_runs.material_id
+            INNER JOIN filament_lot_changes ON filament_lot_changes.filament_lot = extrusion_runs.filament_lot
             WHERE start_time >= %s AND start_time < %s
-            AND line_id = %s
+            AND extrusion_runs.line_id = %s
             ORDER by start_time desc
         """
-        cursor.execute(query_1, ('%Y-%m-%d %H:%i:%s', start_date, end_date, "EX03"))
+        cursor.execute(query_1, ('%H:%i:%s','%H:%i:%s','%Y-%m-%d %H:%i:%s', start_date, end_date, line_id))
 
         # zip the results into json
         columns_1 = [desc[0] for desc in cursor.description]  # Get column names
@@ -881,22 +930,34 @@ def get_extruder():
         failure_mode_frequency = {}
         ovens_load = {}
         campaign_statistics = {}
-
+        campaign_lots = {
+            "feedstock": set(), 
+            "filament": set()
+        }
 
         # get averages
         for row in results_1:
             if "failure_mode" in row and row["failure_mode"]:
                 if row["failure_mode"] not in failure_mode_frequency:
-                    failure_mode_frequency[row["failure_mode"]] = [row["spool_id"]]
+                    failure_mode_frequency[row["failure_mode"]] = [row]
                 else:
-                    failure_mode_frequency[row["failure_mode"]].append(row["spool_id"])
+                    failure_mode_frequency[row["failure_mode"]].append(row)
             if "load_id" in row and row["load_id"]:
                 if row["load_id"] not in ovens_load:
-                    ovens_load[row["load_id"]] = [row["load_id"]]
+                    ovens_load[row["load_id"]] = [row]
                 else:
-                    ovens_load[row["load_id"]].append(row["load_id"])
+                    ovens_load[row["load_id"]].append(row)
+            if "feedstock_lot_id" in row and row["feedstock_lot_id"]:
+                campaign_lots["feedstock"].add(row["feedstock_lot_id"])
+
+            if "filament_lot" in row and row["filament_lot"]:
+                campaign_lots["filament"].add(row["filament_lot"])       
         
+        campaign_lots["feedstock"] = list(campaign_lots["feedstock"])
+        campaign_lots["filament"] = list(campaign_lots["filament"])
+
         # determine ovens availability and oven loads ... 
+        # implement the date range propery
 
         query_2 = """
         SELECT DISTINCT o1.oven_name
@@ -917,15 +978,85 @@ def get_extruder():
             "remainder" : len(results_1) % 66
         }
 
-        
-
-
-
-                
+          
         cursor.close()
         cnx.close()
 
-        return jsonify({"produced": results_1, "failures" : failure_mode_frequency, "statistics" : campaign_statistics, "ovens": ovens_load})
+
+
+        return jsonify({"produced": results_1, "scheduled": 60, "projected": 100, "failures" : failure_mode_frequency, "statistics" : campaign_statistics, "ovens": ovens_load, "lots": campaign_lots})
+
+
+    except Exception as e:
+        print(f"Error: {e}")
+        return jsonify({"error": "An unknown error occurred", "details": str(e)}), 500
+
+@app.route('/api/extruder/live', methods=['GET'])
+def get_extruder_live():
+    """
+    Endpoint for retrieving the live extrusion data.
+    
+    This function retrieves extrusion data for the current month (or a specified date range),
+    counts the occurrences of each status (gs, qc, sc), and returns the results in JSON format.
+    
+    Returns:
+    json: A response containing the extrusion data.
+    """
+    line_id = request.args.get('line_id')  # Get 'line_id' from query parameters
+
+    # line_id = "EX03"
+    
+    if not line_id:
+        return jsonify({"error": "line_id parameter is required"}), 400
+
+    
+    
+    if not re.match(r'^[A-Za-z]{2}\d{2,4}$', line_id):
+        return jsonify({"error": "Invalid line_id format. Must be in the format EX**."}), 400
+    
+    try:
+        cnx = msc.connect(**IGNITION_DB_CLUSTER)
+        cursor = cnx.cursor()
+
+        query_1 = """
+            SELECT 
+                extrusion_runs.line_id,
+                spool_id, 
+                meters_on_spool,
+                meters_scanned,
+                volume,
+                TIME_TO_SEC(logging_time) AS logging_time,
+                DATE_FORMAT(run_time, %s) AS run_time,
+                TIME_TO_SEC(run_time) AS run_time_sec,
+                failure_mode, 
+                line_speed,
+                avg_cs_xx,
+                avg_cs_xy,
+                avg_cs_yy,
+                status, 
+                DATE_FORMAT(start_time, %s) AS start_time, 
+                material_specs.material,
+                load_id,
+                filament_lot_changes.filament_lot,
+                filament_lot_changes.feedstock_lot_id
+            FROM extrusion_runs
+            INNER JOIN material_specs ON material_specs.material_id = extrusion_runs.material_id
+            INNER JOIN filament_lot_changes ON filament_lot_changes.filament_lot = extrusion_runs.filament_lot
+            AND extrusion_runs.line_id = %s
+            ORDER by start_time desc
+            LIMIT 3
+        """
+
+        cursor.execute(query_1, ('%H:%i:%s', '%Y-%m-%d %H:%i:%s', line_id))
+
+        # zip the results into json
+        columns_1 = [desc[0] for desc in cursor.description]  # Get column names
+        results_1 = [dict(zip(columns_1, row)) for row in cursor.fetchall()]
+          
+        cursor.close()
+        cnx.close()
+
+        return jsonify({"live": results_1})
 
 
     except Exception as e:

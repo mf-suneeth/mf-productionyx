@@ -47,3 +47,12 @@ for entry in days_with_weekdays:
           {"1":{"date":"2024-11-18","id":"2024-11-18_1_EX04","line":"EX04","material_id":"ONX","shift":1},
            "2":{"date":"2024-11-18","id":"2024-11-18_2_EX04","line":"EX04","material_id":"ONX","shift":2},
            "3":""},{"1":{"date":"2024-11-18","id":"2024-11-18_1_EX04","line":"EX04","material_id":"ONX","shift":1},"2":{"date":"2024-11-18","id":"2024-11-18_2_EX04","line":"EX04","material_id":"ONX","shift":2},"3":""}]]
+
+
+const MyComponent = () => {
+    return (
+ 
+    );
+};
+
+export default MyComponent;

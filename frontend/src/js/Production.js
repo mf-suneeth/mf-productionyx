@@ -206,7 +206,7 @@ function Production() {
     scheduleData && (
       <div
         className="production-root"
-        style={{ backgroundColor: "black", color: "white", height: "auto", padding: "3vw" }}
+        style={{ backgroundColor: "black", color: "white", height: "auto", padding: "3vw", overflow: "hidden"}}
       >
         <div
           className="selector-root"
