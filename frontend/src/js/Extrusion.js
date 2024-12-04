@@ -347,116 +347,176 @@ function Extrusion() {
                     defaultValue="EX03"
                 />
             </div>
-            {!loading &&
-                <div className="extruder-live" style={{ display: "flex", flexDirection: "row", padding: "0rem 0rem", alignItems: "center", verticalAlign: "center", marginBottom: "5rem", gap: "1rem" }}>
-                    <div className="extruder-svg" style={{ flexBasis: "30%" }}>
-                        <svg
-                            style={{ width: '100%', height: 'auto' }}
-                            viewBox="0 0 891 478"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                        >
-                            <rect
-                                x="0.5"
-                                y="246.5"
-                                width="639"
-                                height="169"
-                                fill="#D9D9D9"
-                                fillOpacity="0.07"
-                                stroke="white"
-                            />
-                            <rect
-                                x="662.5"
-                                y="299.5"
-                                width="228"
-                                height="63"
-                                fill="#D9D9D9"
-                                fillOpacity="0.07"
-                                stroke="white"
-                            />
-                            <path
-                                d="M298.364 243.633L181 343.344L63.6363 243.633L108.495 82.1925L253.505 82.1925L298.364 243.633Z"
-                                stroke="white"
-                            />
-                            <path
-                                d="M656.807 278.531L673.475 330.5L656.807 382.469L630.179 362.869L630.179 298.131L656.807 278.531Z"
-                                stroke="white"
-                            />
-                            <line
-                                x1="481.588"
-                                y1="317.717"
-                                x2="639.588"
-                                y2="87.7169"
-                                stroke="white"
-                            />
-                            <line
-                                x1="385.543"
-                                y1="343.796"
-                                x2="538.543"
-                                y2="0.796307"
-                                stroke="white"
-                            />
-                            <line
-                                x1="274.49"
-                                y1="384.9"
-                                x2="293.49"
-                                y2="477.9"
-                                stroke="white"
-                            />
-                            <line
-                                x1="656.49"
-                                y1="384.9"
-                                x2="675.49"
-                                y2="477.9"
-                                stroke="white"
-                            />
-                            <line
-                                x1="166.471"
-                                y1="299.168"
-                                x2="104.471"
-                                y2="473.168"
-                                stroke="white"
-                            />
-                        </svg>
-                    </div>
-                    <div className="" style={{ display: "flex", flexDirection: "row", gap: "1rem", flexGrow: 1, marginTop: "7rem" }}>
-                        {live && live.map((spool, index) => (
+            <div className="extruder-live" style={{ display: "flex", flexDirection: "row", padding: "0rem 0rem", alignItems: "center", verticalAlign: "center", marginBottom: "20vh", gap: "1rem" }}>
+                <div className="extruder-svg" style={{ flexBasis: "30%" }}>
+                    <svg
+                        style={{ width: '100%', height: 'auto' }}
+                        viewBox="0 0 891 478"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                    >
+                        <rect
+                            x="0.5"
+                            y="246.5"
+                            width="639"
+                            height="169"
+                            fill="#D9D9D9"
+                            fillOpacity="0.07"
+                            stroke="white"
+                        />
+                        <rect
+                            x="662.5"
+                            y="299.5"
+                            width="228"
+                            height="63"
+                            fill="#D9D9D9"
+                            fillOpacity="0.07"
+                            stroke="white"
+                        />
+                        <path
+                            d="M298.364 243.633L181 343.344L63.6363 243.633L108.495 82.1925L253.505 82.1925L298.364 243.633Z"
+                            stroke="white"
+                        />
+                        <path
+                            d="M656.807 278.531L673.475 330.5L656.807 382.469L630.179 362.869L630.179 298.131L656.807 278.531Z"
+                            stroke="white"
+                        />
+                        <line
+                            x1="481.588"
+                            y1="317.717"
+                            x2="639.588"
+                            y2="87.7169"
+                            stroke="white"
+                        />
+                        <line
+                            x1="385.543"
+                            y1="343.796"
+                            x2="538.543"
+                            y2="0.796307"
+                            stroke="white"
+                        />
+                        <line
+                            x1="274.49"
+                            y1="384.9"
+                            x2="293.49"
+                            y2="477.9"
+                            stroke="white"
+                        />
+                        <line
+                            x1="656.49"
+                            y1="384.9"
+                            x2="675.49"
+                            y2="477.9"
+                            stroke="white"
+                        />
+                        <line
+                            x1="166.471"
+                            y1="299.168"
+                            x2="104.471"
+                            y2="473.168"
+                            stroke="white"
+                        />
+                    </svg>
+                </div>
+                {!loading && 
+                    <div className="" style={{ display: "flex", flexDirection: "row", gap: "1rem", flexGrow: 1, marginTop: "5.5vh" }}>
+                    {live && live.map((spool, index) => (
+                        <div
+                            className=""
+                            style={{
+                                display: "flex",
+                                flexDirection: "column",
+                                flexGrow: 1,
+                                gap: "0.75rem",
+                                flexBasis: Math.floor(spool.meters_on_spool),
+                                color: "white",
+                                justifyContent: "center",
+                            }}>
                             <div
                                 className=""
                                 style={{
-                                    display: "flex",
-                                    flexDirection: "column",
-                                    flexGrow: 1,
-                                    gap: "0.75rem",
-                                    flexBasis: Math.floor(spool.meters_on_spool),
+                                    ...getLiveBoxStyle(spool),
+                                    ...style_live_spool_box,
+                                    paddingLeft: "1rem",
+                                    padding: "0.75rem",
                                     color: "white",
-                                    justifyContent: "center",
+                                    fontSize: "1.25rem",
+                                    fontWeight: 500
+
+
                                 }}>
-                                <div
-                                    className=""
-                                    style={{
-                                        ...getLiveBoxStyle(spool),
-                                        ...style_live_spool_box,
-                                        paddingLeft: "1rem",
-                                        padding: "0.75rem",
-                                        color: "white",
-                                        fontSize: "1.25rem",
-                                        fontWeight: 500
-
-
-                                    }}>
-                                    {spool.spool_id}
-                                </div>
-                                <div className="" style={{ borderLeft: "1px solid white", paddingLeft: "1rem", paddingBottom: "2rem", fontSize: "1.25rem" }}>
-                                    <div className="spec-status">{spool.failure_mode ? spool.failure_mode.toUpperCase() : "IN SPEC"}</div>
-                                    <div className="spec-runtime">{spool.run_time ? spool.run_time : "Pending"}</div>
-                                    <div className="spec-length">{spool.meters_on_spool} m</div>
-                                    <div className="spec-notes-failure"></div>
-                                </div>
+                                {spool.spool_id}
                             </div>
-                        ))}
-                    </div>
-                </div>}
+                            <div className="" style={{ borderLeft: "1px solid white", paddingLeft: "1rem", paddingBottom: "2rem", fontSize: "1.25rem" }}>
+                                <div className="spec-status">{spool.failure_mode ? spool.failure_mode.toUpperCase() : "IN SPEC"}</div>
+                                <div className="spec-runtime">{spool.run_time ? spool.run_time : "Pending"}</div>
+                                <div className="spec-length">{spool.meters_on_spool} m</div>
+                                <div className="spec-notes-failure"></div>
+                            </div>
+                        </div>
+                    ))}
+                    </div> 
+                }
+{loading && 
+    <div style={{ display: "flex", flexDirection: "row", gap: "1rem", flexGrow: 1, marginTop: "5.5vh" }}>
+        {Array(4).fill().map((_, index) => (
+            <div
+                key={index}
+                style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    flexGrow: 1,
+                    gap: "0.75rem",
+                    flexBasis: "25%",
+                    justifyContent: "center",
+                }}
+            >
+                <div
+                    style={{
+                        backgroundColor: "#333",
+                        width: "100%",
+                        height: "100px",
+                        animation: "pulse 1.5s infinite ease-in-out",
+                        borderRadius: "8px",
+                    }}
+                ></div>
+                <div style={{ paddingLeft: "1rem" }}>
+                    <div
+                        style={{
+                            backgroundColor: "#333",
+                            height: "20px",
+                            width: "80%",
+                            marginBottom: "8px",
+                            animation: "pulse 1.5s infinite ease-in-out",
+                            borderRadius: "4px",
+                        }}
+                    ></div>
+                    <div
+                        style={{
+                            backgroundColor: "#333",
+                            height: "20px",
+                            width: "60%",
+                            marginBottom: "8px",
+                            animation: "pulse 1.5s infinite ease-in-out",
+                            borderRadius: "4px",
+                        }}
+                    ></div>
+                    <div
+                        style={{
+                            backgroundColor: "#333",
+                            height: "20px",
+                            width: "50%",
+                            animation: "pulse 1.5s infinite ease-in-out",
+                            borderRadius: "4px",
+                        }}
+                    ></div>
+                </div>
+            </div>
+        ))}
+    </div>
+}
+
+            </div>
             <div className="highlight-box" style={{ display: "flex", gap: "1rem", paddingBottom: "1rem" }}>
                 {[
                     { label: "scheduled", state: schemeScheduled },
@@ -466,7 +526,7 @@ function Extrusion() {
                 ].map(({ label, state }) => (
                     <div
                         key={label}
-                        onClick={() => handleSchemeClick(label)}                        
+                        onClick={() => handleSchemeClick(label)}
                         style={{ ...style_button_mode, ...getLabelStyle(state), display: "flex", alignItems: "center", gap: "0.5rem" }}
                     >
                         <div>{label}</div>
