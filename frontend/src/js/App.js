@@ -8,8 +8,7 @@ import ShowMonth from "./showMonth";
 import Production from "./Production";
 import Documentation from "./docString";
 import Extrusion from "./Extrusion";
-
-// gen t
+import Overview from "./Overview";
 
 
 function App() {
@@ -17,7 +16,7 @@ function App() {
     <Router>
       <div className="App">
         <nav>
-          <ul style={{display: "flex", flexDirection: "row", alignItems: "center"}}>
+          <ul style={{display: "flex", flexDirection: "row", alignItems: "center", padding: "1rem 5vw", gap: "2vw", fontWeight: 600}}>
           <li>
             <Link to="#" style={{"fontSize" : "1.5rem"}}> BI Production Scheduler</Link>
             </li>
@@ -29,6 +28,9 @@ function App() {
             </li>
             <li>
               <Link to="/get-month">Enter</Link>
+            </li>
+            <li>
+              <Link to="/overview">Overview</Link>
             </li>
             <li>
               <Link to="/production">Production</Link>
@@ -49,6 +51,7 @@ function App() {
           />
           <Route path="/get-month" element={<GetMonth />} />
           <Route path="/show-month" element={<ShowMonth />} />
+          <Route path="/overview" element={<Overview />} />
           <Route path="/production" element={<Production />} />
           <Route path="/extrusion" element={<Extrusion />} />
           <Route path="/documentation" element={<Documentation />} />

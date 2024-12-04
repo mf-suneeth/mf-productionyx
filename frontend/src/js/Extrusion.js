@@ -1,6 +1,7 @@
 import React, { Fragment, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import Dropdown from "./Dropdown"; // Adjust the path as per your file structure
+import moment from 'moment';
 
 
 
@@ -52,8 +53,15 @@ const style_live_spool_box = {
     position: "relative", // Ensure the tooltip positions relative to the box
     // border: "1px solid #169C38",
     // aspectRatio: "8 / 1", // Keeps the box square
-    width: "100%", // Full width of grid cell
-    marginTop: "8.6rem",
+    // width: "100%", // Full width of grid cell
+    // marginTop: "8.6rem",
+    display: "flex",
+    flexDirection: "row",
+    gap: "1rem",
+    flexGrow: 1,
+    paddingTop: "22vh",
+    // border: "1px solid orange",
+
 };
 
 const style_oven_spool_box = {
@@ -179,6 +187,14 @@ const style_table_header_data = {
     backgroundColor: "#111111"
 }
 
+// error styles
+const style_error_box = {
+    fontSize: "1.5rem",
+    color: "#FFEB3B",
+    fontWeight: "bold"
+
+}
+
 
 const getBoxStyle = (status, failureMode, hoveredFailureMode, hoveredTableSpool, spoolId) => {
     if (hoveredTableSpool && hoveredTableSpool === spoolId) {
@@ -200,9 +216,11 @@ const getBoxStyle = (status, failureMode, hoveredFailureMode, hoveredTableSpool,
         case 2:
             return { backgroundColor: "#FFEB3B80", color: "#FFEB3B", border: "1px solid #FFEB3B" };
         case 4:
-            return { backgroundColor: "#33333380", color: "#FFF", border: "1px solid #333" };
+            return { backgroundColor: "#33333380", color: "#333", border: "1px solid #333" };
         case 5:
-            return { backgroundColor: "transparent", color: "#FFF", border: "1px solid #333" };
+            return { backgroundColor: "transparent", color: "#333", border: "1px solid #333" };
+        case -1:
+            return { backgroundColor: "#444", border: "#444" }
         default:
             return { backgroundColor: "#000", color: "#FFF", border: "1px solid #333" };
     }
@@ -240,7 +258,9 @@ function Extrusion() {
     const [schemeProjected, setSchemeProjected] = useState(null);
     const [schemeErrored, setSchemeErrored] = useState(null);
     const [selectedOption, setSelectedOption] = useState(null);
-    const [activeScheme, setActiveScheme] = useState("produced");
+
+    const [startDate, setStartDate] = useState(moment());
+    const [endDate, setEndDate] = useState(moment().add(1, 'days'));
 
     const options = [
         { value: "EX00", label: "EX00" },
@@ -272,6 +292,8 @@ function Extrusion() {
             setSchemeErrored(schemeErrored ? false : true);
             setSchemeScheduled(false);
             setSchemeProduced(false);
+            // if (schemeErrored)
+            //     setSchemeProduced(true);
             setSchemeProjected(false);
         } else {
 
@@ -281,8 +303,47 @@ function Extrusion() {
         // if (!schemeProduced && !schemeScheduled && !schemeErrored && !schemeProjected) {
         //     setSchemeProduced(true);
         // }
-        setActiveScheme((prev) => (prev === label ? null : label)); // Toggle visibility
     }
+
+    const handleStartDateChange = (value) => {
+        const newStartDate = moment(value, "YYYY-MM-DD");
+
+        // Check if the date is valid
+        if (!newStartDate.isValid()) {
+            console.log("Invalid start date");
+            return; // Do nothing if invalid
+        }
+
+        // Check if the new start date is before the end date
+        if (newStartDate.isAfter(endDate)) {
+            console.log("Start date cannot be after end date");
+            return; // Do nothing if start date is after the end date
+        }
+
+        // If valid and correct order, update the start date
+        setStartDate(newStartDate);
+    };
+
+    const handleEndDateChange = (value) => {
+        const newEndDate = moment(value, "YYYY-MM-DD");
+
+        // Check if the date is valid
+        if (!newEndDate.isValid()) {
+            console.log("Invalid end date");
+            return; // Do nothing if invalid
+        }
+
+        // Check if the new end date is after the start date
+        if (newEndDate.isBefore(startDate)) {
+            console.log("End date cannot be before start date");
+            return; // Do nothing if end date is before the start date
+        }
+
+        // If valid and correct order, update the end date
+        setEndDate(newEndDate);
+    };
+
+
 
     const fetchData = async (url, setData) => {
         try {
@@ -303,7 +364,7 @@ function Extrusion() {
         setLoading(true);
         // setLineID(line_id ? line_id.toUpperCase() : '');
         const url = lineID
-            ? `http://localhost:5000/api/extruder?line_id=${lineID}`
+            ? `http://localhost:5000/api/extruder?line_id=${lineID}&start_date=${startDate?.format('YYYY-MM-DD')}&end_date=${endDate?.format('YYYY-MM-DD')}`
             : `http://localhost:5000/api/extruder`;
 
         fetchData(url, (data) => setData(data));
@@ -315,7 +376,7 @@ function Extrusion() {
         }, 5000);
 
         return () => clearInterval(fetchInterval);
-    }, [lineID]);
+    }, [lineID, startDate, endDate]);
 
     useEffect(() => {
         const url = lineID
@@ -346,18 +407,67 @@ function Extrusion() {
                     onChange={setLineID}
                     defaultValue="EX03"
                 />
+                <div className="date-selector" style={{ display: "flex", gap: "1rem" }}>
+                    <input
+                        id="start-date"
+                        type="date"
+                        min="2000-01-01"
+                        max="2030-12-31"
+                        value={startDate.format('YYYY-MM-DD')} // Format the date as YYYY-MM-DD
+                        style={{
+                            fontSize: "1.5rem",
+                            // font: "Roboto",
+                            padding: "0.5rem",
+                            backgroundColor: "#000000",
+                            border: "none",
+                            color: "#FFFFFF",
+                            letterSpacing: "0.5rem",
+                        }}
+                        onChange={(e) => handleStartDateChange(e.target.value)}
+                    />
+                </div>
+                <div className="date-selector" style={{ display: "flex", gap: "1rem" }}>
+                    <input
+                        id="end-date"
+                        type="date"
+                        min="2000-01-01"
+                        max="2030-12-31"
+                        value={endDate.format('YYYY-MM-DD')} // Format the date as YYYY-MM-DD
+                        style={{
+                            fontSize: "1.5rem",
+                            // font: "Roboto",
+                            padding: "0.5rem",
+                            backgroundColor: "#000000",
+                            border: "none",
+                            color: "#FFFFFF",
+                            letterSpacing: "0.5rem",
+                        }}
+                        onChange={(e) => handleEndDateChange(e.target.value)}
+                    />
+                </div>
             </div>
-            <div className="extruder-live" style={{ display: "flex", flexDirection: "row", padding: "0rem 0rem", alignItems: "center", verticalAlign: "center", marginBottom: "20vh", gap: "1rem" }}>
+            <div
+                className="extruder-live"
+                style={{
+                    display: "flex",
+                    flexDirection: "row",
+                    padding: "0rem 0rem",
+                    alignItems: "center",
+                    verticalAlign: "center",
+                    marginBottom: "5rem",
+                    gap: "1rem",
+                }}
+            >
                 <div className="extruder-svg" style={{ flexBasis: "30%" }}>
                     <svg
-                        style={{ width: '100%', height: 'auto' }}
-                        viewBox="0 0 891 478"
+                        style={{ width: "100%", height: "auto" }}
+                        viewBox="0 0 781 362"
                         fill="none"
                         xmlns="http://www.w3.org/2000/svg"
                     >
                         <rect
                             x="0.5"
-                            y="246.5"
+                            y="192.5"
                             width="639"
                             height="169"
                             fill="#D9D9D9"
@@ -365,157 +475,145 @@ function Extrusion() {
                             stroke="white"
                         />
                         <rect
-                            x="662.5"
-                            y="299.5"
-                            width="228"
+                            x="639.5"
+                            y="245.5"
+                            width="141"
                             height="63"
                             fill="#D9D9D9"
                             fillOpacity="0.07"
                             stroke="white"
                         />
                         <path
-                            d="M298.364 243.633L181 343.344L63.6363 243.633L108.495 82.1925L253.505 82.1925L298.364 243.633Z"
+                            d="M298.364 189.633L181 289.344L63.6363 189.633L108.495 28.1925L253.505 28.1925L298.364 189.633Z"
                             stroke="white"
                         />
                         <path
-                            d="M656.807 278.531L673.475 330.5L656.807 382.469L630.179 362.869L630.179 298.131L656.807 278.531Z"
-                            stroke="white"
-                        />
-                        <line
-                            x1="481.588"
-                            y1="317.717"
-                            x2="639.588"
-                            y2="87.7169"
-                            stroke="white"
-                        />
-                        <line
-                            x1="385.543"
-                            y1="343.796"
-                            x2="538.543"
-                            y2="0.796307"
-                            stroke="white"
-                        />
-                        <line
-                            x1="274.49"
-                            y1="384.9"
-                            x2="293.49"
-                            y2="477.9"
-                            stroke="white"
-                        />
-                        <line
-                            x1="656.49"
-                            y1="384.9"
-                            x2="675.49"
-                            y2="477.9"
-                            stroke="white"
-                        />
-                        <line
-                            x1="166.471"
-                            y1="299.168"
-                            x2="104.471"
-                            y2="473.168"
+                            d="M656.807 224.531L673.475 276.5L656.807 328.469L630.179 308.869L630.179 244.131L656.807 224.531Z"
                             stroke="white"
                         />
                     </svg>
                 </div>
-                {!loading && 
-                    <div className="" style={{ display: "flex", flexDirection: "row", gap: "1rem", flexGrow: 1, marginTop: "5.5vh" }}>
-                    {live && live.map((spool, index) => (
-                        <div
-                            className=""
-                            style={{
-                                display: "flex",
-                                flexDirection: "column",
-                                flexGrow: 1,
-                                gap: "0.75rem",
-                                flexBasis: Math.floor(spool.meters_on_spool),
-                                color: "white",
-                                justifyContent: "center",
-                            }}>
+
+                {/* Render live data or skeleton loader */}
+                <div style={style_live_spool_box}>
+                    {loading || !live || live.length === 0
+                        ? Array(3)
+                            .fill()
+                            .map((_, index) => (
+                                <div
+                                    key={index}
+                                    style={{
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        flexGrow: 1,
+                                        gap: "0.75rem",
+                                        flexBasis: "25%",
+                                        justifyContent: "center",
+                                    }}
+                                >
+                                    <div
+                                        style={{
+                                            backgroundColor: "#333",
+                                            width: "100%",
+                                            height: "3rem",
+                                            animation: "pulse 1.5s infinite ease-in-out",
+                                            borderRadius: "2px",
+                                        }}
+                                    ></div>
+                                    <div>
+                                        <div
+                                            style={{
+                                                backgroundColor: "#333",
+                                                height: "20px",
+                                                width: "50%",
+                                                marginBottom: "8px",
+                                                animation: "pulse 1.5s infinite ease-in-out",
+                                                borderRadius: "2px",
+                                            }}
+                                        ></div>
+                                        <div
+                                            style={{
+                                                backgroundColor: "#333",
+                                                height: "20px",
+                                                width: "40%",
+                                                marginBottom: "8px",
+                                                animation: "pulse 1.5s infinite ease-in-out",
+                                                borderRadius: "2px",
+                                            }}
+                                        ></div>
+                                        <div
+                                            style={{
+                                                backgroundColor: "#333",
+                                                height: "20px",
+                                                width: "30%",
+                                                animation: "pulse 1.5s infinite ease-in-out",
+                                                borderRadius: "2px",
+                                            }}
+                                        ></div>
+                                        <div
+                                            style={{
+                                                backgroundColor: "#333",
+                                                height: "20px",
+                                                width: "30%",
+                                                animation: "pulse 1.5s infinite ease-in-out",
+                                                borderRadius: "2px",
+                                            }}
+                                        ></div>
+                                    </div>
+                                </div>
+                            ))
+                        : live.map((spool, index) => (
                             <div
-                                className=""
+                                key={index}
                                 style={{
-                                    ...getLiveBoxStyle(spool),
-                                    ...style_live_spool_box,
-                                    paddingLeft: "1rem",
-                                    padding: "0.75rem",
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    flexGrow: 1,
+                                    gap: "0.75rem",
+                                    flexBasis: Math.floor(spool.meters_on_spool),
                                     color: "white",
-                                    fontSize: "1.25rem",
-                                    fontWeight: 500
-
-
-                                }}>
-                                {spool.spool_id}
+                                    justifyContent: "center",
+                                }}
+                            >
+                                <div
+                                    style={{
+                                        ...getLiveBoxStyle(spool),
+                                        ...style_live_spool_box,
+                                        paddingLeft: "1rem",
+                                        padding: "0.75rem",
+                                        color: "white",
+                                        fontSize: "1.25rem",
+                                        fontWeight: 500,
+                                    }}
+                                >
+                                    {spool.spool_id}
+                                </div>
+                                <div
+                                    style={{
+                                        borderLeft: spool.run_time
+                                            ? "1px solid gray"
+                                            : "1px dotted #333333",
+                                        paddingLeft: "1rem",
+                                        paddingBottom: "2rem",
+                                        fontSize: "1.25rem",
+                                    }}
+                                >
+                                    <div className="spec-status">
+                                        {spool.failure_mode
+                                            ? spool.failure_mode.toUpperCase()
+                                            : "IN SPEC"}
+                                    </div>
+                                    <div className="spec-runtime">
+                                        {spool.run_time ? spool.run_time : "Pending"}
+                                    </div>
+                                    <div className="spec-length">
+                                        {spool.meters_on_spool} m
+                                    </div>
+                                    <div className="spec-notes-failure"></div>
+                                </div>
                             </div>
-                            <div className="" style={{ borderLeft: "1px solid white", paddingLeft: "1rem", paddingBottom: "2rem", fontSize: "1.25rem" }}>
-                                <div className="spec-status">{spool.failure_mode ? spool.failure_mode.toUpperCase() : "IN SPEC"}</div>
-                                <div className="spec-runtime">{spool.run_time ? spool.run_time : "Pending"}</div>
-                                <div className="spec-length">{spool.meters_on_spool} m</div>
-                                <div className="spec-notes-failure"></div>
-                            </div>
-                        </div>
-                    ))}
-                    </div> 
-                }
-{loading && 
-    <div style={{ display: "flex", flexDirection: "row", gap: "1rem", flexGrow: 1, marginTop: "5.5vh" }}>
-        {Array(4).fill().map((_, index) => (
-            <div
-                key={index}
-                style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    flexGrow: 1,
-                    gap: "0.75rem",
-                    flexBasis: "25%",
-                    justifyContent: "center",
-                }}
-            >
-                <div
-                    style={{
-                        backgroundColor: "#333",
-                        width: "100%",
-                        height: "100px",
-                        animation: "pulse 1.5s infinite ease-in-out",
-                        borderRadius: "8px",
-                    }}
-                ></div>
-                <div style={{ paddingLeft: "1rem" }}>
-                    <div
-                        style={{
-                            backgroundColor: "#333",
-                            height: "20px",
-                            width: "80%",
-                            marginBottom: "8px",
-                            animation: "pulse 1.5s infinite ease-in-out",
-                            borderRadius: "4px",
-                        }}
-                    ></div>
-                    <div
-                        style={{
-                            backgroundColor: "#333",
-                            height: "20px",
-                            width: "60%",
-                            marginBottom: "8px",
-                            animation: "pulse 1.5s infinite ease-in-out",
-                            borderRadius: "4px",
-                        }}
-                    ></div>
-                    <div
-                        style={{
-                            backgroundColor: "#333",
-                            height: "20px",
-                            width: "50%",
-                            animation: "pulse 1.5s infinite ease-in-out",
-                            borderRadius: "4px",
-                        }}
-                    ></div>
+                        ))}
                 </div>
-            </div>
-        ))}
-    </div>
-}
-
             </div>
             <div className="highlight-box" style={{ display: "flex", gap: "1rem", paddingBottom: "1rem" }}>
                 {[
@@ -556,7 +654,24 @@ function Extrusion() {
                                         id="image0_305_6"
                                         width="100"
                                         height="100"
-                                        xlinkHref="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAYAAABw4pVUAAAACXBIWXMAAAsTAAALEwEAmpwYAAAE1klEQVR4nO2dy49VRRCH20cUJyaOAiZqQFfq3q0YTVCjiK+of8BoIEpEo7JEXbpQIz6CjNGFfwDxsULvvYsTjTsUXxuZUQTZKMPgSp3AZyrTxMtE5r66zqnuU18ymztzT3ef35yu7uqqOiE4juM4juM4juM4juOMBHA1cDewE3gH6ADfAnPAAvB3/FmIn8nvPo9/+zRwF7Deb/uYAFPAA8CeeHPPMDlyjUPAG8D9wGUu0OoiXAjcCuwDTqGPtPEhsBW4yMX5T4g1wFPAPM0h09yTwKVtn5ZeAI5jh+PAc9K30CbiNPEzdjkKPBJKB7gB+JR8+BjYGEoEeDAuS3PjFPBYKAUxlHH5mjv7sjf6wFrgK8rhC+CqkCPAtXFTVxo/AhtCTgA3A79SLkeAm0IOANcBv1A+x4DrQwY2Qx7ptvCDWZsSV1MlGfBh+dLk6gt4m/ayJ1hC3AxN3xEDPBwMuUMWm74bBjhpwsgDnzR9JwzxkQX/lHMuW5s8z2jDfmNU5hs5HgZ2jdzV9vBsE3uO35oetWHk5HFNnYLIGXhqloC9wAywO7omtDgW25iJbUrbqdleZ3RI6oCEfyTiJJzbzjTQIz1yzekVbW1SEOUwcEEdgtxBevausnDoJWynd74ABmCW9NxWhyAfKHR8ZpX2phKJcl4xYjtPkJ731ITouzl/KnT8xSHa7WmJEdt4mfQsqi6BY3inlpGdVhJlGDGuVFw1bkkuRF/HNYMVKuDyIUTpKFyzqziuV5ML0dd57TPyKqEoFsQQvk4uRF9KQIoo9BRTzNSA6SvFNVJxGlinIYjkZ9RFNcGTYuXJ6GezhiCSLINxUSqDYgg7NASRbCQMi1IZFUN4U0MQSRFrgt6Q9sCKzfg/DmgI8h3NUQ367zf6ZJzlUFo1lgfV9GFUNY4oBsQQ5jUEOUHzVKOIYkQM4XcNQSTtmFxEwY4Ywl8uCCO7WbITJNcpq1PqlJWzUe+UaNRzX/Z2Slv2+sbQ2MbQsuukq3SeYtp1YtW52B3jO50SnIsW3e/dCb7byd39vt4PqMY+oFqbXBBjR7jdhNfSflIOJheibwBS/EuLSuE8w4IoqkEOUolNg5LDgO5NLsSKm6JR7W13oYFyJ9Wj4IH3FTpeaijprJoQfR2/XaHj7xYabL2prnQEqVGYkqWVnWd5Xs85HeGnWtIR4gCkYGRqlmJNqsfjfK5Zi1EM+EtxmppVStjZVosYURBPaRtcs7HechvA8wM61WZ21ipGn8G1XFm0KQ7XmvC5QpR7Ghu2XfTyQYYURUqpOsvsb1SMKMjGuCNtOwtmajEC99XkmreKjP2hYIlCavOOy+vBGnFvIuXu2kYFXBIsAlwBfEN7+N5sEcwWlok9mk2hfikyHIsNl8oR4MaQE8A18Z1PJdbq3RByRObXwgx9JccCIWeAi4FXMt+nnInLepurqQnqpOT6QpdHQ4lIXdvMfF/7s7UXY7hamnxN3iDmGvfa1o3UkZLqncq1FcfZWzzT2HmGIZfL9niw0xQSkLCtKKOdAuCWuJr5owYRFuOrVzfXFh2S+etYt4gXVepNxQjySZFrHARek/DOVk9LkwKsA+6UxBfgLeCz6MSci9nBZ1/ffSJ+Jr87EP92R3wKdFICHMdxHMdxHMdxHMcJ5fIvUpYlXZoGgOIAAAAASUVORK5CYII="
+                                        xlinkHref="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAYAAABw4pVUAAAACXBIWXMAAAsTAAALEwE
+                                        AmpwYAAAE1klEQVR4nO2dy49VRRCH20cUJyaOAiZqQFfq3q0YTVCjiK+of8BoIEpEo7JEXbpQIz6CjNGFfwDxsULvvYsTjTsUXxu
+                                        ZUQTZKMPgSp3AZyrTxMtE5r66zqnuU18ymztzT3ef35yu7uqqOiE4juM4juM4juM4juOMBHA1cDewE3gH6ADfAnPAAvB3/FmIn8n
+                                        vPo9/+zRwF7Deb/uYAFPAA8CeeHPPMDlyjUPAG8D9wGUu0OoiXAjcCuwDTqGPtPEhsBW4yMX5T4g1wFPAPM0h09yTwKVtn5ZeAI5
+                                        jh+PAc9K30CbiNPEzdjkKPBJKB7gB+JR8+BjYGEoEeDAuS3PjFPBYKAUxlHH5mjv7sjf6wFrgK8rhC+CqkCPAtXFTVxo/AhtCTgA
+                                        3A79SLkeAm0IOANcBv1A+x4DrQwY2Qx7ptvCDWZsSV1MlGfBh+dLk6gt4m/ayJ1hC3AxN3xEDPBwMuUMWm74bBjhpwsgDnzR9Jwz
+                                        xkQX/lHMuW5s8z2jDfmNU5hs5HgZ2jdzV9vBsE3uO35oetWHk5HFNnYLIGXhqloC9wAywO7omtDgW25iJbUrbqdleZ3RI6oCEfyT
+                                        iJJzbzjTQIz1yzekVbW1SEOUwcEEdgtxBevausnDoJWynd74ABmCW9NxWhyAfKHR8ZpX2phKJcl4xYjtPkJ731ITouzl/KnT8xSH
+                                        a7WmJEdt4mfQsqi6BY3inlpGdVhJlGDGuVFw1bkkuRF/HNYMVKuDyIUTpKFyzqziuV5ML0dd57TPyKqEoFsQQvk4uRF9KQIoo9BR
+                                        TzNSA6SvFNVJxGlinIYjkZ9RFNcGTYuXJ6GezhiCSLINxUSqDYgg7NASRbCQMi1IZFUN4U0MQSRFrgt6Q9sCKzfg/DmgI8h3NUQ3
+                                        67zf6ZJzlUFo1lgfV9GFUNY4oBsQQ5jUEOUHzVKOIYkQM4XcNQSTtmFxEwY4Ywl8uCCO7WbITJNcpq1PqlJWzUe+UaNRzX/Z2Slv
+                                        2+sbQ2MbQsuukq3SeYtp1YtW52B3jO50SnIsW3e/dCb7byd39vt4PqMY+oFqbXBBjR7jdhNfSflIOJheibwBS/EuLSuE8w4IoqkE
+                                        OUolNg5LDgO5NLsSKm6JR7W13oYFyJ9Wj4IH3FTpeaijprJoQfR2/XaHj7xYabL2prnQEqVGYkqWVnWd5Xs85HeGnWtIR4gCkYGR
+                                        qlmJNqsfjfK5Zi1EM+EtxmppVStjZVosYURBPaRtcs7HechvA8wM61WZ21ipGn8G1XFm0KQ7XmvC5QpR7Ghu2XfTyQYYURUqpOsv
+                                        sb1SMKMjGuCNtOwtmajEC99XkmreKjP2hYIlCavOOy+vBGnFvIuXu2kYFXBIsAlwBfEN7+N5sEcwWlok9mk2hfikyHIsNl8oR4Ma
+                                        QE8A18Z1PJdbq3RByRObXwgx9JccCIWeAi4FXMt+nnInLepurqQnqpOT6QpdHQ4lIXdvMfF/7s7UXY7hamnxN3iDmGvfa1o3UkZL
+                                        qncq1FcfZWzzT2HmGIZfL9niw0xQSkLCtKKOdAuCWuJr5owYRFuOrVzfXFh2S+etYt4gXVepNxQjySZFrHARek/DOVk9LkwKsA+6
+                                        UxBfgLeCz6MSci9nBZ1/ffSJ+Jr87EP92R3wKdFICHMdxHMdxHMdxHMcJ5fIvUpYlXZoGgOIAAAAASUVORK5CYII="
                                     />
                                 </defs>
                             </svg>
@@ -566,7 +681,7 @@ function Extrusion() {
             </div>
             <div className="extruder-produced">
                 <div className="spool-box-wrapper" style={style_spool_box_wrapper}>
-                    {data && data.produced && schemeProduced &&
+                    {data && data.produced && schemeProduced && data.produced.length > 0 ? (
                         data.produced.map((spool, index) => (
                             <div
                                 key={index}
@@ -592,7 +707,71 @@ function Extrusion() {
                                                 padding: "0.25rem",
                                                 width: "fit-content",
                                                 ...getBoxStyle(spool?.status),
-                                                color: "white"
+                                            }}
+                                        >
+                                            {spool["failure_mode"]}
+                                        </div>
+                                        <div className="">{spool["spool_id"]}</div>
+                                        <div className="">{spool["start_time"]}</div>
+                                        <div className="">{spool["meters_on_spool"]}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))) : (<></>
+                        // <div className="error-message" style={{ ...style_error_box, display: loading ? "none" : "block" }}>No spools produced in the queried range {startDate?.format("YYYY-MM-DD")} - {endDate?.format("YYYY-MM-DD")} </div>
+                    )}
+                    {data && data.scheduled && schemeScheduled && data.produced.length > 0 ? (
+                        Array.from({ length: data.scheduled - (schemeProduced ? data.produced.length : 0) }, (_, index) => (
+                            <div key={index} style={{
+                                ...style_spool_box, ...getBoxStyle(4),
+                            }}>
+                                <div style={{ ...style_oven_box_inner }}>
+                                    {index + 1}
+                                </div>
+                            </div>
+                        ))) : (
+                        <></>
+                    )
+                    }
+                    {data && data.projected && schemeProjected && data.produced.length > 0 ? (
+                        Array.from({ length: data.projected - Math.max(schemeProduced ? data.produced.length : 0, schemeScheduled ? data.scheduled : 0) }, (_, index) => (
+                            <div key={index} style={{
+                                ...style_spool_box, ...getBoxStyle(5),
+                            }}>
+                                <div style={{ ...style_oven_box_inner }}>
+                                    {index + 1}
+                                </div>
+                            </div>
+                        ))) : (
+                        <></>
+                    )
+                    }
+                    {data && data.errored && schemeErrored &&
+                        data.errored.map((spool, index) => (
+                            <div
+                                key={index}
+                                className="spool-box"
+                                style={{
+                                    ...style_spool_box,
+                                    ...getBoxStyle(spool.status, spool.failure_mode, hoveredFailureMode, hoveredTableSpool, spool.spool_id),
+                                }}
+                                onMouseEnter={(e) =>
+                                    e.currentTarget.querySelector('.tooltip').style.display = 'block'
+                                }
+                                onMouseLeave={(e) =>
+                                    e.currentTarget.querySelector('.tooltip').style.display = 'none'
+                                }
+                            >
+                                <div className="tooltip" style={style_tooltip}>
+                                    <div className="" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                                        <div className="" style={{ fontSize: "1.5rem" }}>{spool["material"]}</div>
+                                        <div
+                                            className=""
+                                            style={{
+                                                borderRadius: "0.25rem",
+                                                padding: "0.25rem",
+                                                width: "fit-content",
+                                                ...getBoxStyle(spool?.status),
                                             }}
                                         >
                                             {spool["failure_mode"]}
@@ -604,33 +783,18 @@ function Extrusion() {
                                 </div>
                             </div>
                         ))}
-                    {data && data.scheduled && schemeScheduled &&
-                        Array.from({ length: data.scheduled - (schemeProduced ? data.produced.length : 0) }, (_, index) => (
+                    {(!data || loading) &&
+                        Array.from({ length: 100 }, (_, index) => (
                             <div key={index} style={{
                                 ...style_spool_box, ...getBoxStyle(4),
+                                animation: "pulse 1.5s infinite ease-in-out",
+
                             }}>
                                 <div style={{ ...style_oven_box_inner }}>
-                                    {index + 1}
+                                    {/* {index + 1} */}
                                 </div>
                             </div>
                         ))
-                    }
-                    {data && data.projected && schemeProjected &&
-                        Array.from({ length: data.projected - Math.max(schemeProduced ? data.produced.length : 0, schemeScheduled ? data.scheduled : 0) }, (_, index) => (
-                            <div key={index} style={{
-                                ...style_spool_box, ...getBoxStyle(5),
-                            }}>
-                                <div style={{ ...style_oven_box_inner }}>
-                                    {index + 1}
-                                </div>
-                            </div>
-                        ))
-                    }
-                    {data && data.projected && schemeErrored &&
-                        <div className="">here are spools that have issues with them:</div>
-                    }
-                    {!data &&
-                        <div className="">Loading data...</div>
                     }
                 </div>
             </div>

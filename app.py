@@ -867,11 +867,11 @@ def get_extruder():
     json: A response containing the extrusion data.
     """
     line_id = request.args.get('line_id')  # Get 'line_id' from query parameters
+
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
 
-    start_date = "2024-10-30"
-    end_date = "2024-10-31"
+    print(start_date, end_date)
     
     if not line_id:
         return jsonify({"error": "line_id parameter is required"}), 400
@@ -880,10 +880,12 @@ def get_extruder():
         return jsonify({"error:" : "both start_date and end_date parameters are required"}), 400
     
     if not validate_dates(start_date, end_date):
-        return jsonify({"error:" : "Illegal date format"}), 400
+        return jsonify({"error:" : "Illegal date format"}), 403
 
 
-    
+    days_diff = datetime.strptime(end_date, '%Y-%m-%d') - datetime.strptime(start_date, '%Y-%m-%d')
+    days_diff = days_diff.days
+
     
     if not re.match(r'^[A-Za-z]{2}\d{2,4}$', line_id):
         return jsonify({"error": "Invalid line_id format. Must be in the format EX**."}), 400
@@ -923,8 +925,16 @@ def get_extruder():
 
         # zip the results into json
         columns_1 = [desc[0] for desc in cursor.description]  # Get column names
-        results_1 = [dict(zip(columns_1, row)) for row in cursor.fetchall()]
+        
+        # Use list comprehension to separate valid and errored rows
+        rows = [dict(zip(columns_1, row)) for row in cursor.fetchall()]
 
+        # Separate valid rows and errored rows
+        results_1 = [row for row in rows]
+        errored_1 = [
+            row for row in rows
+            if any(value in [None, ''] for key, value in row.items() if key != 'load_id')
+        ]
         # get frequency of failures 
         # print(results_1)
         failure_mode_frequency = {}
@@ -935,7 +945,9 @@ def get_extruder():
             "filament": set()
         }
 
+        errors1 = []
         # get averages
+
         for row in results_1:
             if "failure_mode" in row and row["failure_mode"]:
                 if row["failure_mode"] not in failure_mode_frequency:
@@ -951,7 +963,8 @@ def get_extruder():
                 campaign_lots["feedstock"].add(row["feedstock_lot_id"])
 
             if "filament_lot" in row and row["filament_lot"]:
-                campaign_lots["filament"].add(row["filament_lot"])       
+                campaign_lots["filament"].add(row["filament_lot"])     
+              
         
         campaign_lots["feedstock"] = list(campaign_lots["feedstock"])
         campaign_lots["filament"] = list(campaign_lots["filament"])
@@ -977,14 +990,14 @@ def get_extruder():
             "full" : int(len(results_1) / 66),
             "remainder" : len(results_1) % 66
         }
-
           
         cursor.close()
         cnx.close()
 
 
 
-        return jsonify({"produced": results_1, "scheduled": 60, "projected": 100, "failures" : failure_mode_frequency, "statistics" : campaign_statistics, "ovens": ovens_load, "lots": campaign_lots})
+
+        return jsonify({"produced": results_1, "scheduled": 60 * days_diff, "projected": 100 * days_diff, "failures" : failure_mode_frequency, "statistics" : campaign_statistics, "ovens": ovens_load, "lots": campaign_lots, "errored" : errored_1})
 
 
     except Exception as e:

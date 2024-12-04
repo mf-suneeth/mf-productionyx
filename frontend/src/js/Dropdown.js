@@ -25,15 +25,12 @@ const Dropdown = ({ options, label, defaultValue, onChange }) => {
                         MozAppearance: "none", // For Firefox
                         textAlign: "left", // Align text to the left
                         width: "fit-content",
-                        fontSize: "3.25vw",
+                        fontSize: "3vw",
                         border: "none"
                     }}
                 >
-                    <option value="" disabled>
-                        Select an option
-                    </option>
                     {options.map((option, index) => (
-                        <option key={index} value={option.value}>
+                        <option key={index} value={option.value} style={{fontSize: "1rem"}}>
                             {option.label}
                         </option>
                     ))}
@@ -48,7 +45,7 @@ const Dropdown = ({ options, label, defaultValue, onChange }) => {
                         color: "white",
                     }}
                 >
-                    ▼
+                    {/* ▼ */}
                 </div>
             </div>
         </div>
