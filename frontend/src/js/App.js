@@ -3,7 +3,7 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import "../css/App.css";
 import FetchMonth from "../js/fetchMonth";
-import GetMonth from "../js/getMonth";
+import Schedule from "./Schedule";
 import ShowMonth from "./showMonth";
 import Production from "./Production";
 import Documentation from "./docString";
@@ -24,10 +24,10 @@ function App() {
               {/* <Link to="/">View</Link> */}
             </li>
             <li>
-              <Link to="/show-month">Data</Link>
+              <Link to="/schedule">Data</Link>
             </li>
             <li>
-              <Link to="/get-month">Enter</Link>
+              <Link to="/schedule">Schedule</Link>
             </li>
             <li>
               <Link to="/overview">Overview</Link>
@@ -49,7 +49,7 @@ function App() {
             path="/"
             element={<FetchMonth url="http://localhost:5000/api/cal" />}
           />
-          <Route path="/get-month" element={<GetMonth />} />
+          <Route path="/schedule" element={<Schedule />} />
           <Route path="/show-month" element={<ShowMonth />} />
           <Route path="/overview" element={<Overview />} />
           <Route path="/production" element={<Production />} />

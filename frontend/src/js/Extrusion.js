@@ -4,7 +4,6 @@ import Dropdown from "./Dropdown"; // Adjust the path as per your file structure
 import moment from 'moment';
 
 
-
 // General styling
 const style_content = {
     display: "flex",

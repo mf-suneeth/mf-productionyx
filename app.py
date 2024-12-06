@@ -1075,6 +1075,34 @@ def get_extruder_live():
     except Exception as e:
         print(f"Error: {e}")
         return jsonify({"error": "An unknown error occurred", "details": str(e)}), 500
+    
+@app.route('/api/schedule/existing', methods=['GET'])
+def get_schedule_existing():
+    try:
+        cnx = msc.connect(**IGNITION_DB_CLUSTER)
+        cursor = cnx.cursor()
+
+        query_1 = """
+            SELECT DISTINCT EXTRACT(YEAR FROM date) AS year, EXTRACT(MONTH FROM date) AS month
+            FROM production_schedule
+            ORDER BY year DESC, month DESC;
+        """
+
+        cursor.execute(query_1)
+
+        # zip the results into json
+        columns_1 = [desc[0] for desc in cursor.description]  # Get column names
+        results_1 = [dict(zip(columns_1, row)) for row in cursor.fetchall()]
+          
+        cursor.close()
+        cnx.close()
+
+        return jsonify({"data": results_1})
+
+
+    except Exception as e:
+        print(f"Error: {e}")
+        return jsonify({"error": "An unknown error occurred", "details": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
