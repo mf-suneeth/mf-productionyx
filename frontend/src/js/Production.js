@@ -17,7 +17,8 @@ const materialColor = {
   CAR: "16131A",
   "625": "47169C",
   "G16" :"D8D0C1",
-  "172" : "3333FF"
+  "172" : "3333FF",
+  "CFA" : "333333"
 };
 
 
@@ -104,8 +105,8 @@ function Production() {
   const [loading, setLoading] = useState(true);
   const [stream, setStream] = useState(null);
   const [material, setMaterial] = useState(null);
-  const [startDate, setStartDate] = useState("2024-10-31");
-  const [endDate, setEndDate] = useState("2024-11-01");
+  const [startDate, setStartDate] = useState(moment().format("YYYY-MM-DD"));
+  const [endDate, setEndDate] = useState(moment(moment()).add(1, 'd').format("YYYY-MM-DD"));
 
   const handleStartDateChange = (value) => {
     console.log(value);
@@ -390,7 +391,7 @@ function Production() {
         <div className="compounding-root">
           <div
             className="page-name"
-            style={{ fontSize: "3rem", fontWeight: 400, paddingBottom: "3rem", paddingTop: "8rem" }}
+            style={{ fontSize: "2.7rem", fontWeight: 400, paddingBottom: "3rem", paddingTop: "8rem" }}
           >
             Compounding:
           </div>
@@ -412,11 +413,11 @@ function Production() {
             ))} */}
             {compoundingData && Object.keys(compoundingData?.produced).map((entry, index) => (
               <div className="" style={{flexBasis: "24%", border: "1px solid grey", borderRadius: "0.5rem"}}>
-                <div key={index} className="" style={{ padding: "1.5rem", borderRadius: "0.5rem", backgroundColor: "#141414", height: "auto"}}>
+                <div key={index} className="" style={{ padding: "1.5rem", borderRadius: "0.5rem", backgroundColor: "#141414", height: "100%"}}>
                   {/* <div className="">   {(compoundingData.produced[entry]['material_id'])}</div> */}
 
                   <div className="" style={{fontSize: "1.5rem", paddingBottom: "2rem", paddingTop: "1rem"}}>{entry}</div>
-                  <div className="" style={{fontSize: "1rem", paddingBottom: "1rem", display: "flex", justifyContent: "space-between", color: "grey"}}>
+                  <div className="" style={{fontSize: "1rem", paddingBottom: "1rem", display: "flex", justifyContent: "start", color: "grey"}}>
                       <div className="">  {(compoundingData.produced[entry]['date'])}</div>
                       <div className="">   {(compoundingData.produced[entry]['raw_powder'])}</div>
                       <div className="">   {(compoundingData.produced[entry]['mass'])}</div>
@@ -455,8 +456,9 @@ function Production() {
 
 
               </div>
-            ))
-
+            ))}
+            {compoundingData==null &&
+              <div className="">No data for range {startDate} {endDate} </div>
             }
             
           </div>

@@ -22,9 +22,9 @@ const style_extruder_title = {
 
 const style_spool_box_wrapper = {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(2vw, 1fr))", // Auto-fit columns, minimum 24px width
+    gridTemplateColumns: "repeat(auto-fit, minmax(2.2vw, 2.2vw))", // Auto-fit columns, minimum 24px width
     gap: "0.4vw", // Optional spacing between boxes
-    justifyContent: "center", // Center the grid
+    // justifyContent: "center", // Center the grid
     alignItems: "center", // Align items in the grid
     overflow: "visible", // Ensure tooltips are not clipped
 };
@@ -33,7 +33,7 @@ const style_oven_spool_box_grid = {
     display: "flex",
     flexWrap: "wrap",
     // gridTemplateColumns: "repeat(auto-fit, minmax(2vw, 1fr))", // Auto-fit columns, minimum 24px width
-    gap: "0.6rem", // Optional spacing between boxes
+    gap: "0.4vw", // Optional spacing between boxes
     justifyContent: "start", // Center the grid
     alignItems: "center", // Align items in the grid
     overflow: "visible", // Ensure tooltips are not clipped
@@ -58,31 +58,9 @@ const style_live_spool_box = {
     flexDirection: "row",
     gap: "1rem",
     flexGrow: 1,
-    paddingTop: "22vh",
+    paddingTop: "20vh",
     // border: "1px solid orange",
 
-};
-
-const style_oven_spool_box = {
-    position: "relative", // Ensure the tooltip positions relative to the box
-    border: "1px solid #333333",
-    aspectRatio: "1 / 1", // Keeps the box square
-    width: "100%", // Full width of grid cell
-    backgroundColor: "#1F1F1F",
-    justifyContent: "center",
-    alignItems: "center",
-    textAlign: "center",
-
-};
-
-const style_oven_box_grid = {
-    display: "grid",
-    flexWrap: "wrap",
-    gridTemplateColumns: "repeat(auto-fit, minmax(8vw, 1fr))", // Auto-fit columns, minimum 24px width
-    gap: "0.6rem", // Optional spacing between boxes
-    justifyContent: "end", // Center the grid
-    alignItems: "center", // Align items in the grid
-    overflow: "visible", // Ensure tooltips are not clipped
 };
 
 const style_oven_box = {
@@ -194,6 +172,51 @@ const style_error_box = {
 
 }
 
+const spool_time = {
+    "174": { "EX00": [349.5094, 332.7376, 524.9048, 510.9524, 501.9351, 490.2568] },
+    "17F": { "EX00": [700.0123, 685.3257, 6315.2308, 6299.8876, 1007.9285, 992.39] },
+    "316": { "EX00": [459.1389, 446.3611, 751.9688, 738.375, 665.9316, 660.6838] },
+    "625": { "EX00": [361.0074, 338.2797, 4937.0, 4938.5, 394.2014, 403.446] },
+    "820": {
+        "EX00": [680.129, 660.0323, 145.3333, 150.0, 781.25, 520.3611],
+        "EX01": [null, null, null, null, 177.1111, 160.4444]
+    },
+    "A20": { "EX00": [380.2847, 351.4097, 359.5, 352.5, 874.2526, 863.8316] },
+    "AO1": {
+        "EX00": [403.2092, 379.8234, 387.0, 362.0, 489.9064, 444.9872],
+        "EX01": [145.5, 120.5, null, null, 169.5, 221.5]
+    },
+    "CPR": { "EX00": [423.4241, 407.4342, 441.0, 420.8571, 870.5924, 854.3992] },
+    "D20": { "EX00": [396.9589, 371.5685, 519.0, 518.0, 489.9496, 472.9928] },
+    "DTS": { "EX00": [738.9618, 719.7176, 1916.8611, 1916.0278, 987.6149, 1011.5021] },
+    "ES2": { "EX00": [662.6975, 605.7782, 633.7941, 620.2941, 508.5884, 442.2866] },
+    "ESD": { "EX00": [769.3348, 811.7674, 6847.1176, 1441.5294, 750.6027, 607.1545] },
+    "G16": {
+        "EX00": [494.0092, 473.8252, 5059.1667, 5011.2083, 517.9291, 356.2601],
+        "EX01": [661.5, 637.1, null, null, 869.9167, 924.2708]
+    },
+    "H13": {
+        "EX00": [352.4894, 334.5835, 8297.3793, 8343.069, 600.0678, 604.9266]
+    },
+    "HTS": { "EX00": [734.8717, 716.8182, 519.1105, 499.9186, 847.3172, 811.9131] },
+    "OFA": { "EX01": [509.7055, 515.4209, 43.0, 47.5, 1327.4444, 1538.0654] },
+    "OFR": {
+        "EX00": [null, null, null, null, 1383.6316, 1012.4737],
+        "EX01": [507.7915, 513.4553, 600.7407, 624.8519, 890.4771, 983.1715]
+    },
+    "ONX": {
+        "EX00": [null, null, 175.8, 169.6, 856.4444, 856.0],
+        "EX01": [413.2847, 419.0276, 458.3265, 463.6327, 1805.7376, 1844.1269],
+        "EX03": [181.518, 190.4767, 2570.4474, 2579.3158, 1041.365, 3648.6921],
+        "EX04": [180.3995, 189.1607, 184.6701, 193.567, 948.5829, 5277.2783]
+    },
+    "OXL": {
+        "EX03": [734.6161, 751.8452, 724.6111, 744.5, 1014.9091, 584.3631]
+    }
+};
+
+  
+
 
 const getBoxStyle = (status, failureMode, hoveredFailureMode, hoveredTableSpool, spoolId) => {
     if (hoveredTableSpool && hoveredTableSpool === spoolId) {
@@ -235,6 +258,7 @@ const getLabelStyle = (state, label) => {
 
 const getLiveBoxStyle = (spool) => {
     if (spool.run_time === null) {
+        console.log(spool)
         return { backgroundColor: "transparent", color: "white", border: "1px dotted #333333" }; // Green for active
     }
     return getBoxStyle(spool.status)
@@ -364,8 +388,8 @@ function Extrusion() {
         // setLineID(line_id ? line_id.toUpperCase() : '');
         const url = lineID
             ? `http://localhost:5000/api/extruder?line_id=${lineID}&start_date=${startDate?.format('YYYY-MM-DD')}&end_date=${endDate?.format('YYYY-MM-DD')}`
-            : `http://localhost:5000/api/extruder`;
-
+            : `http://localhost:5000/api/extruder?line_id=EX03`;
+        console.log(url)
         fetchData(url, (data) => setData(data));
         const fetchInterval = setInterval(() => {
             (async () => {
@@ -388,7 +412,7 @@ function Extrusion() {
             (async () => {
                 await fetchData(url, (data) => setLive(data.live));
             })();
-        }, 5000);
+        }, 2000);
 
         return () => clearInterval(fetchInterval);
     }, [lineID]);
@@ -414,7 +438,7 @@ function Extrusion() {
                         max="2030-12-31"
                         value={startDate.format('YYYY-MM-DD')} // Format the date as YYYY-MM-DD
                         style={{
-                            fontSize: "1.5rem",
+                            fontSize: "1rem",
                             // font: "Roboto",
                             padding: "0.5rem",
                             backgroundColor: "#000000",
@@ -423,7 +447,7 @@ function Extrusion() {
                             letterSpacing: "0.5rem",
                         }}
                         onChange={(e) => handleStartDateChange(e.target.value)}
-                    />
+                    /> 
                 </div>
                 <div className="date-selector" style={{ display: "flex", gap: "1rem" }}>
                     <input
@@ -433,7 +457,7 @@ function Extrusion() {
                         max="2030-12-31"
                         value={endDate.format('YYYY-MM-DD')} // Format the date as YYYY-MM-DD
                         style={{
-                            fontSize: "1.5rem",
+                            fontSize: "1rem",
                             // font: "Roboto",
                             padding: "0.5rem",
                             backgroundColor: "#000000",
@@ -614,7 +638,7 @@ function Extrusion() {
                         ))}
                 </div>
             </div>
-            <div className="highlight-box" style={{ display: "flex", gap: "1rem", paddingBottom: "1rem" }}>
+            {<div className="highlight-box" id="produced" style={{ display: "flex", gap: "1rem", paddingBottom: "1rem" }}>
                 {[
                     { label: "scheduled", state: schemeScheduled },
                     { label: "produced", state: schemeProduced },
@@ -677,7 +701,7 @@ function Extrusion() {
                         )}
                     </div>
                 ))}
-            </div>
+            </div>}
             <div className="extruder-produced">
                 <div className="spool-box-wrapper" style={style_spool_box_wrapper}>
                     {data && data.produced && schemeProduced && data.produced.length > 0 ? (
@@ -696,6 +720,7 @@ function Extrusion() {
                                     e.currentTarget.querySelector('.tooltip').style.display = 'none'
                                 }
                             >
+                                <div className="" style={{ ...style_oven_box_inner }}>{data.produced.length - index}</div>
                                 <div className="tooltip" style={style_tooltip}>
                                     <div className="" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                                         <div className="" style={{ fontSize: "1.5rem" }}>{spool["material"]}</div>
@@ -719,26 +744,27 @@ function Extrusion() {
                         ))) : (<></>
                         // <div className="error-message" style={{ ...style_error_box, display: loading ? "none" : "block" }}>No spools produced in the queried range {startDate?.format("YYYY-MM-DD")} - {endDate?.format("YYYY-MM-DD")} </div>
                     )}
-                    {data && data.scheduled && schemeScheduled && data.produced.length > 0 ? (
-                        Array.from({ length: data.scheduled - (schemeProduced ? data.produced.length : 0) }, (_, index) => (
-                            <div key={index} style={{
-                                ...style_spool_box, ...getBoxStyle(4),
-                            }}>
-                                <div style={{ ...style_oven_box_inner }}>
-                                    {index + 1}
+                    {data && data.scheduled && schemeScheduled && data.produced.length > 0 && (
+                        
+                            Array.from({ length: 60 - (schemeProduced ? data.produced.length : 0) }, (_, index) => (
+                                <div key={index} style={{
+                                    ...style_spool_box, ...getBoxStyle(4),
+                                }}>
+                                    <div style={{ ...style_oven_box_inner }}>
+                                        {60 - index}
+                                    </div>
                                 </div>
-                            </div>
-                        ))) : (
-                        <></>
-                    )
-                    }
+                            ))
+                    )}
+
+
                     {data && data.projected && schemeProjected && data.produced.length > 0 ? (
                         Array.from({ length: data.projected - Math.max(schemeProduced ? data.produced.length : 0, schemeScheduled ? data.scheduled : 0) }, (_, index) => (
                             <div key={index} style={{
                                 ...style_spool_box, ...getBoxStyle(5),
                             }}>
                                 <div style={{ ...style_oven_box_inner }}>
-                                    {index + 1}
+                                    {data.projected - index}
                                 </div>
                             </div>
                         ))) : (
@@ -796,6 +822,25 @@ function Extrusion() {
                         ))
                     }
                 </div>
+                {data && data.scheduled && schemeScheduled && data.produced.length > 0 && (
+                        <div className="" style={{padding: "3rem 0rem 0rem 0rem"}}>
+                            <div className="">{data.scheduled[data.active]} monthly goal</div>
+                            <div className="">{data.scheduled[data.active] / 2} / 2 extruders that make {data.active}</div>
+                            <div className="">{data.scheduled[data.active] / 19} / 19 scheduled days on {lineID}</div>
+                        </div>
+                )}
+                {data && data.projected && schemeProjected && data.produced.length > 0 && (
+                        <>
+                        <div className="" style={{padding: "3rem 0rem 0rem 0rem"}}>
+                            <div className="">{spool_time[data.active][lineID][0]} - {spool_time[data.active][lineID][4]} seconds per spool of {data.active} on {lineID}</div>
+                            <div className="">{3600 * 16} s available</div>
+                            <div className="">{3600  / spool_time[data.active][lineID]} spools can be made in this time</div>
+                        </div>
+                        <div className="">
+                            
+                        </div>
+                        </>
+                )}
             </div>
             <div className="extruder-failure">
                 <div className="failure-modes" style={style_failure_mode_set}>

@@ -6,9 +6,10 @@ import FetchMonth from "../js/fetchMonth";
 import Schedule from "./Schedule";
 import ShowMonth from "./showMonth";
 import Production from "./Production";
-import Documentation from "./docString";
+import Documentation from "./Documentation";
 import Extrusion from "./Extrusion";
 import Overview from "./Overview";
+import Infrastructure from "./Infrastructure";
 
 
 function App() {
@@ -18,7 +19,7 @@ function App() {
         <nav>
           <ul style={{display: "flex", flexDirection: "row", alignItems: "center", padding: "1rem 5vw", gap: "2vw", fontWeight: 600}}>
           <li>
-            <Link to="#" style={{"fontSize" : "1.5rem"}}> BI Production Scheduler</Link>
+            <Link to="#" style={{"fontSize" : "1.5rem"}}>Scheduler</Link>
             </li>
             <li>
               {/* <Link to="/">View</Link> */}
@@ -39,7 +40,10 @@ function App() {
               <Link to="/extrusion">Extrusion</Link>
             </li>
             <li>
-              <Link to="/documentation">Documentation</Link>
+              <Link to="/documentation">Infrastructure</Link>
+            </li>            
+            <li>
+              <Link to="/documentation">Docs</Link>
             </li>
           </ul>
         </nav>
@@ -55,6 +59,7 @@ function App() {
           <Route path="/production" element={<Production />} />
           <Route path="/extrusion" element={<Extrusion />} />
           <Route path="/documentation" element={<Documentation />} />
+          <Route path="/infrastructure" element={<Infrastructure />} />
         </Routes>
       </div>
     </Router>

@@ -157,6 +157,8 @@ function Schedule() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [existingMonths, setExistingMonths] = useState(null);
+  const [goals, setGoals] = useState({})
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (e) => {
     console.log(e.target.value);
@@ -167,6 +169,21 @@ function Schedule() {
     // Format the date to "YYYY-MM"
     const formattedDate = new Date(year, month - 1).toISOString().slice(0, 7);
     setSelectedDate(formattedDate);
+  };
+
+
+  // Handle changes for any input field
+  const handleGoalChange = (e, entry) => {
+    const updatedGoals = { ...goals };  // Create a copy of the existing goals
+
+    const code = materialsDict[entry]?.code;  // Get the material code based on the entry
+    if (code) {
+      // Update the goal for the specific material code
+      updatedGoals[code] = e.target.value;
+    }
+    console.log(updatedGoals)
+    // Update the state with the new goals object
+    setGoals(updatedGoals);
   };
 
 
@@ -193,6 +210,28 @@ function Schedule() {
         }
       });
     }
+  };
+
+  const submitGoals = (goals) => {
+    if (!selectedDate) {
+      alert("Please select a date to set goals.");
+      return;
+    }
+
+    fetch('http://localhost:5000/api/goals/redo', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ goals, selectedDate }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        console.log('Goals submitted successfully:', data);
+      })
+      .catch((error) => {
+        console.error('Error submitting goals:', error);
+      });
   };
 
   const fetchData = async (url, setData) => {
@@ -225,7 +264,14 @@ function Schedule() {
     setSelectedDate(`${currentYear}-${currentMonth.toString().padStart(2, '0')}`);
   }, []);
 
-
+  // Track changes to goals and submit to API
+  useEffect(() => {
+    console.log("using effect")
+    if (Object.keys(goals).length > 0) {
+      console.log("length passed")
+      submitGoals(goals);
+    }
+  }, [goals]); // This will trigger every time `goals` changes
 
   const handleInput = (event) => {
     let rawInput = event.target.value.split("\n").map((line) => line.split("\t"));
@@ -267,6 +313,7 @@ function Schedule() {
     };
 
     try {
+      setIsSubmitting(true);
       const response = await fetch("http://localhost:5000/api/redo", {
         method: "POST",
         headers: {
@@ -280,6 +327,7 @@ function Schedule() {
       }
 
       const responseData = await response.json();
+      setIsSubmitting(false);
       console.log("Response:", responseData);
 
       // Handle the response data if necessary
@@ -293,7 +341,7 @@ function Schedule() {
   };
 
   return (
-    <div className="component-wrapper" style={{ padding: "2rem 5vw", backgroundColor: "#FFF", }}>
+    <div className="component-wrapper" style={{ padding: "4rem 5vw", backgroundColor: "#FFF",  height: "100%", flex: 1}}>
       <div className="" style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "2rem", flexDirection: "row" }}>
         <div className="enter-date" style={style_category_dialog}>
           <div className="tab-header" style={style_tab_header}>
@@ -306,7 +354,6 @@ function Schedule() {
             </form>
             {existingMonths && existingMonths.data && (
               <div>
-                <div className="" style={{ fontSize: "0.75rem", alignSelf: "center", width: "100%", margin: "1rem" }}></div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem", justifyContent: "start", }}>
                   {Object.keys(existingMonths.data).map((month, index) => (
                     <div
@@ -354,7 +401,7 @@ function Schedule() {
         </div>
         <div className="update-preview" style={style_category_dialog}>
           <div className="tab-header" style={style_tab_header}>
-            <div style={style_tab_header_idx}>4</div>
+            <div style={style_tab_header_idx}>3</div>
             <div style={style_tab_header_label}>Preview</div>
           </div>
           <div className="tab-body" style={style_tab_body}>
@@ -390,34 +437,62 @@ function Schedule() {
                   </table>
                 ))}
               </div>
-            ) : (<div className="prompt-text" style={{border: "1px solid #EEEEFF", backgroundColor: "#EEEEEE", height: "100%", borderRadius: "0.5rem", textAlign: "center", alignContent:"center", fontSize: "1rem", fontWeight: 500, letterSpacing: "0.125rem", color: "#CCCCCC"}}>paste details for preview</div>)}
+            ) : (<div className="prompt-text" style={{ border: "1px solid #EEEEFF", backgroundColor: "#EEEEEE", height: "100%", borderRadius: "0.5rem", textAlign: "center", alignContent: "center", fontSize: "1rem", fontWeight: 500, color: "#CCCCCC", padding: "1rem 0rem" }}>paste schedule for preview</div>)}
           </div>
         </div>
         <div className="update-goals" style={style_category_dialog}>
           <div className="tab-header" style={style_tab_header}>
-            <div style={style_tab_header_idx}>3</div>
+            <div style={style_tab_header_idx}>4</div>
             <div style={style_tab_header_label}>Update Goals</div>
           </div>
           <div className="tab-body" style={style_tab_body}>
-            {(extrusionGoals || fiberGoals || compoundingGoals) && [extrusionGoals, fiberGoals, compoundingGoals].map((goal, i) => goal ? (
-              <table key={i} className="goals-table" style={{ width: "100%", borderCollapse: "collapse", backgroundColor: "#F9FAFB", borderRadius: "0.5rem", border: "1px solid #E5E7EB", overflow: "hidden", boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)", fontSize: "0.75rem" }}>
-                <thead>
-                  <tr style={{ backgroundColor: "#3B82F6", color: "#FFF", padding: "0rem" }}>
-                    <th style={{ padding: "0.5rem", textAlign: "left", fontWeight: "600", fontSize: "0.875rem" }}>{["Extrusion", "Fiber", "Compounding"][i]}</th>
-                    <th style={{ padding: "0.5rem", textAlign: "left", fontWeight: "600", fontSize: "0.875rem" }}>Shifts</th>
-                    <th style={{ padding: "0.5rem", textAlign: "left", fontWeight: "600", fontSize: "0.875rem" }}>Goals</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.keys(goal).map((entry, j) => (
-                    <tr key={j} style={{ backgroundColor: j % 2 === 0 ? "#FFFFFF" : "#F3F4F6", transition: "background-color 0.2s ease", cursor: "pointer" }} onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#E5E7EB")} onMouseOut={(e) => (e.currentTarget.style.backgroundColor = j % 2 === 0 ? "#FFFFFF" : "#F3F4F6")}>
-                      <td style={{ padding: "0.5rem", color: "#374151", fontWeight: 400 }}>{entry}</td>
-                      <td style={{ padding: "0.5rem", color: "#374151", fontWeight: 400 }}>{goal[entry]}</td>
-                      <td style={{ padding: "0.5rem", color: "#374151", fontWeight: 400 }}>{"0"}</td>
+            {(extrusionGoals || fiberGoals || compoundingGoals) &&
+              [extrusionGoals, fiberGoals, compoundingGoals].map((goal, i) => goal ? (
+                <table key={i} className="goals-table" style={{ width: "100%", borderCollapse: "collapse", backgroundColor: "#F9FAFB", borderRadius: "0.5rem", border: "1px solid #E5E7EB", overflow: "hidden", boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)", fontSize: "0.75rem", tableLayout: "fixed" }}>
+                  <colgroup>
+                    <col style={{ width: "50%" }} />
+                    <col style={{ width: "25%" }} />
+                    <col style={{ width: "25%" }} />
+                  </colgroup>
+                  <thead>
+                    <tr style={{ backgroundColor: "#3B82F6", color: "#FFF", padding: "0rem" }}>
+                      <th style={{ padding: "0.5rem", textAlign: "left", fontWeight: "600", fontSize: "0.875rem" }}>{["Extrusion", "Fiber", "Compounding"][i]}</th>
+                      <th style={{ padding: "0.5rem", textAlign: "left", fontWeight: "600", fontSize: "0.875rem" }}>Shifts</th>
+                      <th style={{ padding: "0.5rem", textAlign: "left", fontWeight: "600", fontSize: "0.875rem" }}>Goals</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>) : null)}
+                  </thead>
+                  <tbody>
+                    {Object.keys(goal).map((entry, j) => (
+                      <tr key={j} style={{ backgroundColor: j % 2 === 0 ? "#FFFFFF" : "#F3F4F6", transition: "background-color 0.2s ease", cursor: "pointer" }} onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#E5E7EB")} onMouseOut={(e) => (e.currentTarget.style.backgroundColor = j % 2 === 0 ? "#FFFFFF" : "#F3F4F6")}>
+                        <td style={{ padding: "0.5rem", color: "#374151", fontWeight: 400 }}>
+                          {entry}
+                        </td>
+                        <td style={{ padding: "0.5rem", color: "#374151", fontWeight: 400 }}>
+                          {goal[entry]}
+                        </td>
+                        {/* <td style={{ padding: "0.5rem", color: "#374151", fontWeight: 400 }}>
+                          <input
+                            type="text"
+                            value={goal[entry] || ''}
+                            onChange={(e) => handleGoalChange(e, entry, ["extrusionGoals", "fiberGoals", "compoundingGoals"][i])}
+                            style={{ width: "100%", padding: "0.25rem", border: "1px solid #E5E7EB", borderRadius: "0.25rem", fontSize: "0.75rem", backgroundColor: "#FFF" }}
+                          />
+                        </td> */}
+                        <td style={{ padding: "0.5rem", color: "#374151", fontWeight: 400 }}>
+                          <input
+                            type="number"
+                            // value={}
+                            onChange={(e) => handleGoalChange(e, entry)}
+                            style={{ width: "100%", padding: "0.25rem", border: "1px solid #E5E7EB", borderRadius: "0.25rem", fontSize: "0.75rem", backgroundColor: "#FFF" }}
+                            onFocus={(e) => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 5px rgba(59, 130, 246, 0.3)"; e.target.style.outline = "none"; }} 
+                            onBlur={(e) => { e.target.style.borderColor = "#DDDDDD"; e.target.style.boxShadow = "none"; e.target.style.outline = "none"; }} 
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : null)}
           </div>
         </div>
         <div className="update-submit" style={style_category_dialog}>
@@ -426,7 +501,47 @@ function Schedule() {
             <div style={style_tab_header_label}>Submit</div>
           </div>
           <div className="tab-body" style={style_tab_body}>
-            <button type="submit" style={{ width: "100%", padding: "1rem", backgroundColor: "#3B82F6", color: "#FFF", fontSize: "1rem", fontWeight: "600", border: "none", borderRadius: "0.5rem", cursor: "pointer", boxShadow: "0 2px 5px rgba(0, 0, 0, 0.1)", transition: "background-color 0.3s" }} onClick={handleSubmit}>Submit</button>
+            {input ?  <button
+              type="submit"
+              onClick={handleSubmit}
+              style={{
+                width: "100%",
+                padding: "1rem",
+                backgroundColor: "transparent",
+                color: "#3B82F6",
+                fontSize: "1rem",
+                fontWeight: "600",
+                border: "1px solid #3B82F6",
+                borderRadius: "0.5rem",
+                cursor: "pointer",
+                boxShadow: "0 2px 5px rgba(0, 0, 0, 0.1)",
+                transition: "background-color 0.3s",
+                position: "relative",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "#3B82F6"
+                e.currentTarget.style.color = "white"
+                // handleSchemeClick("produced")
+            }}
+
+            onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "transparent"
+                e.currentTarget.style.color = "#3B82F6"
+            }}
+            >
+              <span
+                style={{
+                  // When submitting, add text animation
+                  ...(isSubmitting && {
+                    animation: "textAnim 2s infinite",
+                  }),
+                }}
+              >
+                {isSubmitting ? "Submitting..." : "Submit"}
+              </span>
+            </button> : <div className="prompt-text" style={{ border: "1px solid #EEEEFF", backgroundColor: "#EEEEEE", height: "100%", borderRadius: "0.5rem", textAlign: "center", alignContent: "center", fontSize: "1rem", fontWeight: 500, color: "#CCCCCC", padding: "1rem 0rem" }}>paste schedule to submit</div>}
+
+
           </div>
         </div>
       </div>
