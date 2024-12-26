@@ -9,7 +9,7 @@ import Production from "./Production";
 import Documentation from "./Documentation";
 import Extrusion from "./Extrusion";
 import Overview from "./Overview";
-import Infrastructure from "./Infrastructure";
+import Hardware from "./Hardware";
 
 
 function App() {
@@ -25,9 +25,6 @@ function App() {
               {/* <Link to="/">View</Link> */}
             </li>
             <li>
-              <Link to="/schedule">Enter</Link>
-            </li>
-            <li>
               <Link to="/schedule">Schedule</Link>
             </li>
             <li>
@@ -40,14 +37,13 @@ function App() {
               <Link to="/extrusion">Extrusion</Link>
             </li>
             <li>
-              <Link to="/documentation">Infrastructure</Link>
+              <Link to="/hardware">Hardware</Link>
             </li>            
             <li>
               <Link to="/documentation">Docs</Link>
             </li>
           </ul>
         </nav>
-
         <Routes>
           <Route
             path="/"
@@ -55,11 +51,11 @@ function App() {
           />
           <Route path="/schedule" element={<Schedule />} />
           <Route path="/show-month" element={<ShowMonth />} />
-          <Route path="/overview" element={<Overview />} />
+          <Route path="/overview" elzement={<Overview />} />
           <Route path="/production" element={<Production />} />
           <Route path="/extrusion" element={<Extrusion />} />
           <Route path="/documentation" element={<Documentation />} />
-          <Route path="/infrastructure" element={<Infrastructure />} />
+          <Route path="/hardware" element={<Hardware />} />
         </Routes>
       </div>
     </Router>

@@ -237,7 +237,7 @@ function Production() {
           </div>
         </div>
 
-        <div className="schedule-root">
+        <div className="schedule-root" id="materials_schedule">
           <div
             className="headers"
             style={{
@@ -363,7 +363,7 @@ function Production() {
                   >
                     {line?.slice(2)}
                   </div>
-                  <div style={{ display: "flex", flexDirection: "row", gap: "1rem", width: "100%" }}>
+                  <div style={{ display: "flex", flexDirection: "row", gap: "1rem", width: "100%" }} id="produced_fiber">
                     {fiberData.produced?.[line].map((entry, index) => (
                       <div
                         key={`${index}-1`}

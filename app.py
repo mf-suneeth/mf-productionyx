@@ -19,6 +19,15 @@ from ingest import ingest, ingest2, ingest3
 
 PRODUCTION_MATRIX = {}
 
+@app.route('/test', methods=['GET'])
+def api_default():
+    import time
+
+    delay = 10
+    time.sleep(delay)
+
+    return jsonify({"testEndpoint":f"Hello from the backend! - slept for {delay} seconds"})
+
 def parse_fiber(req):
     """
     Parse the fiber input and return a dictionary with counts.
@@ -55,7 +64,7 @@ def get_data():
     json: A response with a success message.
     """
     cnx = msc.connect(**IGNITION_DB_CLUSTER)
-    return jsonify({"message": "Hello from the backend!"})
+    return jsonify({"message": "Successfully connected to database"})
 
 @app.route('/api/submit', methods=['GET'])
 def submit_form():
@@ -218,18 +227,7 @@ def get_current_fiber():
             DATE(start_time) <= %s AND DATE(fixed_time) >= %s
         """
 
-        # Bind the variables when executing the query
         cursor.execute(query, ("%Y-%m-%d %H:%i:%s", "%Y-%m-%d %H:%i:%s", start_date, start_date))
-
-
-        # # Bind the variables when executing the query
-        # cursor.execute(query, ("%Y-%m-%d %H:%i:%s", "%Y-%m-%d %H:%i:%s", f"{start_date}%", f"{start_date}%"))
-
-
-        # columns = [desc[0] for desc in cursor.description]  # Get column names
-        # results = [dict(zip(columns, row)) for row in cursor.fetchall()]
-
-        # Serialize Data -> 
 
         raw_results = cursor.fetchall()
         labels = []
@@ -272,9 +270,6 @@ def get_current_fiber():
             if line_id not in line_data_dict:
                 line_data_dict[line_id] = []
             line_data_dict[line_id].append(data_entry)
-
-    
-
 
         # Close cursor and connection
         cursor.close()
@@ -371,19 +366,13 @@ def get_current_compounding():
             # print(obj)
             batch_info = [obj['batch_date'], obj['batch_num'], obj['stage'], obj['batch_id'], obj['batch_mass']]
 
-
-
             if obj['lot_id'] in group_by_lots:
                 # just append the subcontainers
                 
-
-
                 if obj['batch_date'] == start_date:
                     group_by_lots[obj['lot_id']]['current'].append(batch_info)
                 else:
                     group_by_lots[obj['lot_id']]['historical'].append(batch_info)
-
-
                 pass
             else:
                 historical = []
@@ -405,10 +394,6 @@ def get_current_compounding():
                 }
                 pass
                 
-    
-
-
-
         # Close cursor and connection
         cursor.close()
         cnx.close()
@@ -419,58 +404,6 @@ def get_current_compounding():
         print(f"Error: {e}")
         return jsonify({"error": "An unknown error occurred", "details": str(e)}), 500  
     
-    try:
-        # Extract query parameters
-        start_date = request.args.get('start_date')
-        end_date = request.args.get('end_date')
-
-        # Validate and parse dates
-        if not start_date or not end_date:
-            return jsonify({"error": "start_date and end_date are required"}), 400
-
-        try:
-            start_date = datetime.strptime(start_date, '%Y-%m-%d')
-            end_date = datetime.strptime(end_date, '%Y-%m-%d')
-            print(start_date, end_date)
-        except ValueError:
-            return jsonify({"error": "Invalid date format. Use YYYY-MM-DD."}), 400
-
-        # Connect to the database
-        cnx = msc.connect(**IGNITION_DB_CLUSTER)
-        cursor = cnx.cursor()
-
-        # Query to select data within the date range
-        query = """
-            SELECT 
-                batch_id,
-                lot_id,
-                stage,
-                batch_num,
-                mass
-            FROM compounding_batches
-            WHERE created_at >= %s AND created_at < %s
-        """
-
-        cursor.execute(query, (start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d')))
-        # print(cursor.fetchall())
-
-        # Fetch results and process them into a JSON-friendly format
-        columns = [desc[0] for desc in cursor.description]  # Get column names
-        produced = [dict(zip(columns, row)) for row in cursor.fetchall()]
-
-
-        # Close cursor and connection
-        cursor.close()
-        cnx.close()
-
-        # Example goals
-
-        return jsonify({"scheduled": results, "produced": produced})
-
-
-    except Exception as e:
-        print(f"Error: {e}")
-        return jsonify({"error": "An unknown error occurred", "details": str(e)}), 500  
 
 @app.route('/api/current/extrusion', methods=['GET'])
 def get_current_day_extrusion():
@@ -538,7 +471,6 @@ def get_current_day_extrusion():
                         }
                     }
 
-
             else: # TODO: could raise this as a possible error
                 print("Unexpected row structure:", row)
                 
@@ -551,9 +483,6 @@ def get_current_day_extrusion():
     except Exception as e:
         print(f"Error: {e}")
         return jsonify({"error": "An unknown error occurred", "details": str(e)}), 500
-
-
-
 
 
 @app.route('/api/current/goals', methods=['GET'])
@@ -575,24 +504,6 @@ def get_current_day_goals(day, line, material):
     return jsonify({"goals" : goals})
 
 
-    pass
-
-
-@app.route('/api/current/ovens', methods=['GET'])
-def get_current_day_ovens(day, line, material):
-    """
-    Placeholder endpoint for retrieving current day oven data.
-    
-    This is a placeholder function and does not currently implement any logic.
-    
-    Args:
-    day (str): The day of the week.
-    line (str): The production line identifier.
-    material (str): The material type.
-    
-    Returns:
-    None
-    """
     pass
 
 @app.route('/api/cal', methods=['GET'])

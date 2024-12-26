@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import moment from "moment";
 
-const sample_host_location = "http://localhost:5000"
+const sample_host_location = "http://localhost:5000";
 const sample_start_date = moment();
 const sample_end_date = moment().add(1, "days");
 
@@ -51,17 +51,134 @@ const theme_style_documentation = {
 function Documentation() {
   const [isHovered, setIsHovered] = useState(false);
   const [selectedBackgroundIndex, setSelectedBackgroundIndex] = useState(0);
+  const [rowsModified, setRowsModified] = useState(30);
+  const [freshFetch, setFreshFetch] = useState(null);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [activeTag, setActiveTag] = useState("route");
+
+  const style_button_mode = {
+    padding: "0.2rem 0.5rem",
+    border: `0.5px solid ${selectedBackgroundIndex ? "#DDDDDD" : "#333333"}`,
+    backgroundColor: selectedBackgroundIndex ? "#f4f4f4" : "#111111",
+    color: selectedBackgroundIndex ? "#333333" : "#ffffff72",
+    borderRadius: "0.25rem",
+    fontWeight: "400",
+    display: "flex",
+    flexDirection: "row",
+    gap: "0.5rem",
+  };
+
+  const randomizeNumber = () => {
+    const randomRows = Math.floor(Math.random() * (100 - 10 + 1)) + 10;
+    setRowsModified(randomRows);
+  };
+
+  const randomizeLineId = () => {
+    const randomRows = Math.floor(Math.random() * (4 - 0 + 1)) + 0;
+    return randomRows;
+  };
+
+  const handleHit = async (url) => {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Network response was not ok");
+      const result = await response.json();
+      setFreshFetch(result);
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCopy = (text) => {
+    navigator.clipboard.writeText(text).then(() => {
+      alert("Copied to clipboard!");
+    });
+  };
+
+  const handleSave = (text, route) => {
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download =
+      "scheduler_" +
+      route.replace("/", "_") +
+      moment().format("_YYYY_MM_DD_HH_MM_SS"); // Default file name
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handlePrettify = (data) => {
+    return (
+      <table
+        style={{
+          width: "100%",
+          borderCollapse: "collapse",
+          margin: "1rem 0",
+          fontSize: "0.9rem",
+          fontFamily: "Arial, sans-serif",
+        }}
+      >
+        <thead>
+          {data[0] && (
+            <tr>
+              {data[0].map((header, index) => (
+                <th
+                  key={index}
+                  style={{
+                    border: "1px solid #ddd",
+                    padding: "0.5rem",
+                    textAlign: "left",
+                    backgroundColor: "#f4f4f4",
+                    color: "#333",
+                    fontWeight: "bold",
+                  }}
+                >
+                  {header || "-"}
+                </th>
+              ))}
+            </tr>
+          )}
+        </thead>
+        <tbody>
+          {data.slice(1).map((row, rowIndex) => (
+            <tr key={rowIndex} style={{ borderBottom: "1px solid #ddd" }}>
+              {row.map((cell, cellIndex) => (
+                <td
+                  key={cellIndex}
+                  style={{
+                    border: "1px solid #ddd",
+                    padding: "0.5rem",
+                    textAlign: "left",
+                    color: "#555",
+                  }}
+                >
+                  {cell || "-"}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    );
+  };
+
+  const handleFilterClick = (tag) => {
+    setActiveTag((prevTag) => (prevTag === tag ? "route" : tag));
+  };
 
   const style_content = {
     paddingLeft: "3rem",
     paddingRight: "3rem",
-    wordBreak: "break-all",
-    whiteSpace: "normal",
   };
 
   const style_documentation_root = {
     font: "1rem",
-    padding: "2rem",
+    padding: "1rem 2rem",
+
     // border: "1px solid white"
   };
 
@@ -88,13 +205,14 @@ function Documentation() {
     textDecoration: "none",
     fontSize: "1.5rem",
     // lineHeight: "3rem",
+    // color: selectedBackgroundIndex ? "#111111" : "#bdbdbd",
     color: selectedBackgroundIndex
       ? isHovered
-        ? "#17171772"
-        : "#171717"
+        ? "#171717"
+        : "#111111cb"
       : isHovered
       ? "#ffffff"
-      : "#ffffff72",
+      : "#bdbdbd",
   };
 
   const style_section_link = {
@@ -146,7 +264,7 @@ function Documentation() {
     },
     route: {
       fontSize: "2.5rem",
-      letterSpacing: "0.5rem",
+      letterSpacing: "0.25rem",
       fontWeight: 400,
       underline: "dotted",
       // backgroundColor: "lightblue",
@@ -204,15 +322,16 @@ function Documentation() {
     preview: {
       display: "flex",
       flexDirection: "row",
-      gap: "0.75rem",
+      gap: "1rem",
       // textDecoration: "underline",
       maxHeight: "20rem",
+      wordBreak: "break-all",
+      whiteSpace: "normal",
       request: {
         marginBottom: "0.25rem",
         height: "100%",
         borderRadius: "0.25rem",
         // overflow: "wrap",
-        wrapType: "break-word",
         padding: "1rem",
         textDecoration: "none",
         border: `1px solid ${selectedBackgroundIndex ? "#dddddd" : "#171717"}`,
@@ -235,6 +354,170 @@ function Documentation() {
     },
   };
   const routeDetails = [
+    // production routes
+    {
+      route: "/api/current",
+      type: ["GET", "HEAD"],
+      params: {
+        required: [
+          {
+            value: "@start_date",
+            format: "<YYYY-MM-DD>",
+            sample: sample_formatted_start_date,
+          },
+          {
+            value: "@end_date",
+            format: "<YYYY-MM-DD>",
+            sample: sample_formatted_end_date,
+          },
+        ],
+      },
+      desc: (
+        <div>
+          Endpoint for retrieving the daily extrusion data. Returns data on
+          which line is producing which material on a given shift. Used in the
+          production page under{" "}
+          <a href="/production/#materials_schedule" style={style_section_link}>
+            Production &gt; Extrusion Map
+          </a>
+          .
+        </div>
+      ),
+      status: "live",
+      source: "mf-ignition.production_schedule",
+      tags: ["production", "schedule", "route"],
+      request: (
+        <a
+          href={`http://localhost:5000/api/current?start_date=${sample_formatted_start_date}&end_date=${sample_formatted_end_date}`}
+          style={style_request_link}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        >
+          {sample_host_location}/api/current?start_date=
+          {sample_formatted_start_date}
+          &end_date={sample_formatted_end_date}
+        </a>
+      ),
+      response: sample_response,
+    },
+    {
+      route: "/api/current/fiber",
+      type: ["GET", "HEAD"],
+      params: {
+        required: [
+          {
+            value: "@start_date",
+            format: "<YYYY-MM-DD>",
+            sample: sample_formatted_start_date,
+          },
+          {
+            value: "@end_date",
+            format: "<YYYY-MM-DD>",
+            sample: sample_formatted_end_date,
+          },
+        ],
+      },
+      desc: (
+        <div>
+          Endpoint for retrieving the daily fiber data. Returns data on which
+          line is producing which material at a given time. Used in the
+          Production page under{" "}
+          <a href="/production/#produced_fiber" style={style_section_link}>
+            Production &gt; Fiber
+          </a>
+          .
+        </div>
+      ),
+      status: "live",
+      source: "mf-ignition.production_spools",
+      tags: ["production", "fiber", "route"],
+      request: (
+        <a
+          href={`http://localhost:5000/api/current/fiber?start_date=${sample_formatted_start_date}&end_date=${sample_formatted_end_date}`}
+          style={style_request_link}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        >
+          {sample_host_location}/api/current/fiber?start_date=
+          {sample_formatted_start_date}
+          &end_date={sample_formatted_end_date}
+        </a>
+      ),
+
+      response:
+        JSON.stringify(`Spool ID,Count,Start Time,Weeknum,FiberLine,Material,Run Length (m),Run Time (mins),Finish Time,Good Meters Unpadded Yield,Good Meters Unpadded Count,Pad the Bad Sections Yield,Pad the Bad Sections Count,Remove Too Short or Bad Yield,Remove Too Short or Bad Count,Good Meters Incl. GP Yield,Good Meters Incl. GP Count,respooled yield,Binned Respooled Count,Binned Respooled Yield,respooled count,50cc eq. Produced,150ccs Produced,Respooled 150 Count,150cc Yield,Spooling Instructions,XY_mean_good,XY_std_good,XY_mean_all,XY_std_all,XX_mean_good,XX_std_good,XX_mean_all,XX_std_all,YY_mean_good,YY_std_good,YY_mean_all,YY_std_all,minarea1m_loss,maxarea1m_loss,x_minareasingleaxis1m_loss,x_maxareasingleaxis1m_loss,y_minareasingleaxis1m_loss,y_maxareasingleaxis1m_loss,minarea20m_loss,maxarea20m_loss,qcstatus
+        FP05_FIB_241101_2102,1,2024-11-01 21:02:00,44,FP05,FIB,95,23.75,2024-11-01 21:25:45,0.9578947368421052,91,0.6526315789473685,62,0.010526315789473684,1,0.010526315789473684,1,0.0,0.0,0.0,0,0,0,0,0.0,"[_] RP 94m
+        ",nan,nan,0.0907031368421053,0.0023046220268272606,nan,nan,0.08594375789473684,0.009877371547570409,nan,nan,0.09784749473684207,0.009154813927079347,0.010869565217391304,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0
+        FP10_CAR_241028_0831,1,2024-10-28 08:31:00,44,FP10,CAR,6505,2168.333333333333,2024-10-29 20:39:20,0.9884704073789393,6430,0.945119139123751,6148,0.8645657186779401,5624,0.8178324365872406,5320,0.7541890853189854,4000.0,0.7,4906,11,3,4014,0.6170637970791699,"[_] RS 1
+        [_] RP 151m
+        [_] GS 1
+        [_] RP 268m
+        [_] GP 413m
+        [_] RP 244m
+        [_][_][_][_] GS 4/10
+        [_][_][_][_] GS 4/10
+        [_][_] GS 2/10
+        [_] RP 76m`),
+    },
+    {
+      route: "/api/current/compounding",
+      type: ["GET", "HEAD"],
+      params: {
+        required: [
+          {
+            value: "@start_date",
+            format: "<YYYY-MM-DD>",
+            sample: sample_formatted_start_date,
+          },
+          {
+            value: "@end_date",
+            format: "<YYYY-MM-DD>",
+            sample: sample_formatted_end_date,
+          },
+        ],
+      },
+      desc: (
+        <div>
+          Endpoint for retrieving the daily compounding data. Returns data on
+          which lots were used, mass of material compounded and remaining mass
+          of lot. sed in the Production page under{" "}
+          <a href="/production/#compounded_lots" style={style_section_link}>
+            Production &gt; Compounding
+          </a>
+          .
+        </div>
+      ),
+      status: "live",
+      source: "mf-ignition.production_spools",
+      tags: ["production", "compounding", "route"],
+      request: (
+        <a
+          href={`http://localhost:5000/api/current/compounding?start_date=${sample_formatted_start_date}&end_date=${sample_formatted_end_date}`}
+          style={style_request_link}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        >
+          {sample_host_location}/api/current/compounding?start_date=
+          {sample_formatted_start_date}
+          &end_date={sample_formatted_end_date}
+        </a>
+      ),
+
+      response:
+        JSON.stringify(`Spool ID,Count,Start Time,Weeknum,FiberLine,Material,Run Length (m),Run Time (mins),Finish Time,Good Meters Unpadded Yield,Good Meters Unpadded Count,Pad the Bad Sections Yield,Pad the Bad Sections Count,Remove Too Short or Bad Yield,Remove Too Short or Bad Count,Good Meters Incl. GP Yield,Good Meters Incl. GP Count,respooled yield,Binned Respooled Count,Binned Respooled Yield,respooled count,50cc eq. Produced,150ccs Produced,Respooled 150 Count,150cc Yield,Spooling Instructions,XY_mean_good,XY_std_good,XY_mean_all,XY_std_all,XX_mean_good,XX_std_good,XX_mean_all,XX_std_all,YY_mean_good,YY_std_good,YY_mean_all,YY_std_all,minarea1m_loss,maxarea1m_loss,x_minareasingleaxis1m_loss,x_maxareasingleaxis1m_loss,y_minareasingleaxis1m_loss,y_maxareasingleaxis1m_loss,minarea20m_loss,maxarea20m_loss,qcstatus
+          FP05_FIB_241101_2102,1,2024-11-01 21:02:00,44,FP05,FIB,95,23.75,2024-11-01 21:25:45,0.9578947368421052,91,0.6526315789473685,62,0.010526315789473684,1,0.010526315789473684,1,0.0,0.0,0.0,0,0,0,0,0.0,"[_] RP 94m
+          ",nan,nan,0.0907031368421053,0.0023046220268272606,nan,nan,0.08594375789473684,0.009877371547570409,nan,nan,0.09784749473684207,0.009154813927079347,0.010869565217391304,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0
+          FP10_CAR_241028_0831,1,2024-10-28 08:31:00,44,FP10,CAR,6505,2168.333333333333,2024-10-29 20:39:20,0.9884704073789393,6430,0.945119139123751,6148,0.8645657186779401,5624,0.8178324365872406,5320,0.7541890853189854,4000.0,0.7,4906,11,3,4014,0.6170637970791699,"[_] RS 1
+          [_] RP 151m
+          [_] GS 1
+          [_] RP 268m
+          [_] GP 413m
+          [_] RP 244m
+          [_][_][_][_] GS 4/10
+          [_][_][_][_] GS 4/10
+          [_][_] GS 2/10
+          [_] RP 76m`),
+    },
     //extrusion routes
     {
       route: "/api/extruder",
@@ -255,8 +538,8 @@ function Documentation() {
         required: [
           {
             value: "@line_id",
-            format: "<EX**>",
-            sample: sample_formatted_line_id,
+            format: "<EX__>",
+            sample: `EX0${randomizeLineId()}`,
           },
         ],
       },
@@ -269,12 +552,12 @@ function Documentation() {
           <a href="/extrusion/#produced" style={style_section_link}>
             Extrusion &gt; produced
           </a>{" "}
-          section*.
+          section.
         </div>
       ),
       status: "live",
       source: "mf-ignition.extrusion_runs",
-      tags: ["extrusion"],
+      tags: ["extrusion", "stream", "route"],
       request: (
         <a
           href={`http://localhost:5000/api/extruder?line_id=$EX03&start_date=${sample_formatted_start_date}&end_date=${sample_formatted_end_date}`}
@@ -282,7 +565,8 @@ function Documentation() {
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
-          {sample_host_location}/api/extruder?line_id=$EX03&start_date={sample_formatted_start_date}
+          {sample_host_location}/api/extruder?line_id=$EX03&start_date=
+          {sample_formatted_start_date}
           &end_date={sample_formatted_end_date}
         </a>
       ),
@@ -297,8 +581,8 @@ function Documentation() {
         required: [
           {
             value: "@line_id",
-            format: "<EX**>",
-            sample: sample_formatted_line_id,
+            format: "<EX__>",
+            sample: `EX0${randomizeLineId()}`,
           },
         ],
       },
@@ -306,7 +590,7 @@ function Documentation() {
         <div>
           Endpoint for streaming current extrusion data. Defaults to 3 most
           recently produced spools, provided data includes spool_id, runtime &
-          length. Used in Extrusion page under
+          length. Used in Extrusion page under{" "}
           <a href="/extrusion/#produced" style={style_section_link}>
             Extrusion &gt; live
           </a>{" "}
@@ -315,7 +599,7 @@ function Documentation() {
       ),
       status: "live",
       source: "mf-ignition.extrusion_runs",
-      tags: ["extrusion", "live"],
+      tags: ["extrusion", "stream", "route"],
       request: (
         <a
           href={`http://localhost:5000/api/extruder/live?line_id=$EX03&spool_count=3`}
@@ -338,12 +622,12 @@ function Documentation() {
       desc: (
         <div>
           Endpoint for displaying existing month data when creating new schedule
-          in the 
+          in the
           <a href="/schedule" style={style_section_link}>
-            Enter
+            Schedule
           </a>
-          tab. Renders labels for months with existing ignition schedules data in
-          the select month form card (under
+          tab. Renders labels for months with existing ignition schedules data
+          in the select month form card (under
           <a href="/schedule/#existing_months" style={style_section_link}>
             Schedule &gt; Existing Months
           </a>
@@ -352,7 +636,7 @@ function Documentation() {
       ),
       status: "live",
       source: "mf-ignition.production_schedule",
-      tags: ["schedule"],
+      tags: ["schedule", "route"],
       request: (
         <a
           href={`http://localhost:5000/api/schedule/existing`}
@@ -393,7 +677,7 @@ function Documentation() {
       ),
       status: "live",
       source: "mf-ignition.production_schedule",
-      tags: ["schedule"],
+      tags: ["schedule", "route"],
       request: (
         <a
           href={`http://localhost:5000/api/redo`}
@@ -405,38 +689,52 @@ function Documentation() {
         </a>
       ),
 
-      response: <><div>Data submitted sucessfully.</div><div>30 rows modified.</div></>,
+      response: (
+        <>
+          <div>Data submitted sucessfully.</div>{" "}
+          <div onClick={randomizeNumber} style={{ cursor: "pointer" }}>
+            {rowsModified} rows modified. (Click to randomize)
+          </div>
+        </>
+      ),
     },
     {
-        route: "/api/goals/redo",
-        type: ["POST", "PUT"],
-        desc: (
-          <div>
-            Endpoint for overwriting and deleting monthly goals in the database.
-            This endpoint handles the entering and modifying
-            production goals entries in
-            <a href="/schedule/#goals" style={style_section_link}>
-              Schedule &gt; Goals
-            </a>
-            for a specific month. Hotwrites to database on input.
-          </div>
-        ),
-        status: "live",
-        source: "mf-ignition.production_schedule",
-        tags: ["schedule"],
-        request: (
-          <a
-            href={`http://localhost:5000/api/goals/redo`}
-            style={style_request_link}
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
-          >
-            {sample_host_location}/api/goals/redo
+      route: "/api/goals/redo",
+      type: ["POST", "PUT"],
+      desc: (
+        <div>
+          Endpoint for overwriting and deleting monthly goals in the database.
+          This endpoint handles the entering and modifying production goals
+          entries in
+          <a href="/schedule/#goals" style={style_section_link}>
+            Schedule &gt; Goals
           </a>
-        ),
-  
-        response: <><div>Data submitted sucessfully.</div><div>30 rows modified.</div></>,
-      },
+          for a specific month. Hotwrites to database on input.
+        </div>
+      ),
+      status: "live",
+      source: "mf-ignition.production_schedule",
+      tags: ["schedule", "route"],
+      request: (
+        <a
+          href={`http://localhost:5000/api/goals/redo`}
+          style={style_request_link}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        >
+          {sample_host_location}/api/goals/redo
+        </a>
+      ),
+
+      response: (
+        <>
+          <div>Data submitted sucessfully.</div>{" "}
+          <div onClick={randomizeNumber} style={{ cursor: "pointer" }}>
+            {rowsModified} rows modified. (Click to randomize)
+          </div>
+        </>
+      ),
+    },
   ];
 
   const [expandPreview, setExpandPreview] = useState(
@@ -460,7 +758,7 @@ function Documentation() {
       }}
     >
       <button
-        style={{ float: "right" }}
+        style={{ float: "right", ...style_button_mode }}
         onClick={() =>
           setSelectedBackgroundIndex(
             selectedBackgroundIndex < backgroundColor_set.length
@@ -471,104 +769,258 @@ function Documentation() {
       >
         toggle
       </button>
-      {/* <pre>{JSON.stringify(routeDetails, null, 2)}</pre> */}
-      {routeDetails.map((route, i) => (
-        <div
-          style={{
-            ...style_route,
-            marginBottom: expandPreview[i] ? "6rem" : "1rem",
-          }}
-          key={i}
-        >
-          <div style={style_route.endpoint}>
-            <div style={style_route.route}>
-              <div className=""></div>
-              {route.route}
-            </div>
-            {route.type.map((type, j) => (
-              <div
-                key={j}
-                style={{ ...style_route.label, ...style_route.label[type] }}
-              >
-                {type}
-              </div>
-            ))}
-            {/* <div style={route.status === "live" ? style_route.status.ON : style_route.status.OFF}>o</div> */}
-          </div>
-          <div style={style_route.description}>{route.desc}</div>
-          {/* <div style={style_route.source}>{route.source}</div> */}
-          <div
+      <div className="" style={{ fontSize: "1.5rem" }}>
+        <pre className="" style={{ textWrap: "wrap" }}>
+          The following routes are used to track production metrics. To use
+          append the endpoint to hostname:port and supply the necessary
+          arguments to pull the desired data. None of the routes are rate
+          limited, but be conscious as each request might fetch live data.
+        </pre>
+        <pre className="" style={{ textWrap: "wrap" }}>
+          The routes marked with * are routes that are not used on any pages but
+          are available to pull desired data. Select one the filters below to
+          display routes with those properties.
+          {/* <div
             className=""
-            style={{ marginBottom: "0.5rem", ...style_modify_response.label }}
-            onClick={() => handleClick(i)}
+            style={{
+              whiteSpace: "pre-wrap",
+              lineHeight: "1.5",
+              margin: "2rem 0rem",
+
+              fontSize: "1rem",
+            }}
           >
-            {expandPreview && expandPreview[i] ? "hide" : "preview"}
+            1. <b>Base URL</b>: Start with the base hostname and port (e.g.,{" "}
+            <code>http://hostname:port</code>).
+            <br />
+            2. <b>Append Endpoint</b>: Add the desired route's endpoint to the
+            base URL.
+            <br />
+            Example: <code>http://hostname:port/api/your-endpoint</code>
+            <br />
+            3. <b>Supply Parameters</b>: Pass the required arguments as query
+            parameters in the URL to pull the desired data.
+            <br />
+            Example:{" "}
+            <code>
+              http://hostname:port/api/your-endpoint?arg1=value1&arg2=value2
+            </code>
+          </div> */}
+        </pre>
+      </div>
+      <div
+        style={{
+          display: "flex",
+          gap: "0.5rem",
+          marginBottom: "2rem",
+          marginTop: "2rem",
+          fontSize: "1.25rem",
+        }}
+      >
+        {[
+          "extrusion",
+          "fiber",
+          "compounding",
+          "schedule",
+          "production",
+          "stream",
+        ].map((tag, index) => (
+          <div
+            key={index}
+            onClick={() => handleFilterClick(tag)}
+            style={{
+              ...style_button_mode,
+              fontWeight: 200,
+              letterSpacing: "1px",
+              backgroundColor:
+                activeTag === tag
+                  ? "#b8b8b8ff"
+                  : selectedBackgroundIndex
+                  ? "#f4f4f4"
+                  : "#111111",
+              color: selectedBackgroundIndex
+                ? "#333333"
+                : activeTag === tag
+                ? "#000000"
+                : "#ffffff72",
+              cursor: "pointer",
+              userSelect: "none",
+            }}
+          >
+            {tag}
           </div>
-          {expandPreview[i] && route.params && (
-            <table style={style_table.container}>
-              <thead>
-                <tr style={style_table.header}>
-                  <th style={style_table.cell}>param</th>
-                  <th style={style_table.cell}>type</th>
-                  <th style={style_table.cell}>format</th>
-                  <th style={style_table.cell}>sample</th>
-                </tr>
-              </thead>
-              <tbody>
-                {Object.entries(route.params).map(([key, value]) => (
-                  <React.Fragment key={key}>
-                    {value.map((item, index) => (
-                      <tr
-                        key={index}
-                        style={style_table.row}
-                        onMouseEnter={(e) =>
-                          (e.currentTarget.style.backgroundColor =
-                            selectedBackgroundIndex
-                              ? "#f1f1f1"
-                              : "rgba(17, 17, 17, 0.682)")
-                        }
-                        onMouseLeave={(e) =>
-                          (e.currentTarget.style.backgroundColor =
-                            "transparent")
-                        }
-                      >
-                        <td style={style_table.cell}>{item.value}</td>
-                        <td style={style_table.cell}>{key}</td>
-                        <td style={style_table.cell}>{item.format}</td>
-                        <td style={style_table.cell}>{item.sample}</td>
-                      </tr>
-                    ))}
-                  </React.Fragment>
-                ))}
-              </tbody>
-            </table>
-          )}
-          <div style={style_route.preview}>
-            {expandPreview[i] && route.request && route.response && (
-              <>
-                <div style={{ flexBasis: "25%" }}>
-                  <div style={style_route.preview.request}>{route.request}</div>
-                  <div style={style_modify_response}>
-                    {/* <div style={style_modify_response.label}>hit</div>
-                    <div style={style_modify_response.label}>copy</div>
-                    <div style={style_modify_response.label}>edit</div> */}
-                  </div>
-                </div>
-                <div style={{ flexBasis: "75%" }}>
-                  <div style={style_route.preview.response}>
-                    {route.response}
-                  </div>
-                  <div style={style_modify_response}>
-                    {/* <div style={style_modify_response.label}>copy</div>
-                    <div style={style_modify_response.label}>pretty</div>
-                    <div style={style_modify_response.label}>save</div> */}
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
+        ))}
+        <div
+          className=""
+          contentEditable
+          style={{
+            ...style_button_mode,
+            fontWeight: 200,
+            letterSpacing: "1px",
+            width: "200px",
+            backgroundColor: selectedBackgroundIndex ? "#f4f4f4" : "#111111",
+            color: selectedBackgroundIndex ? "#000000" : "#ffffff72",
+            cursor: "pointer",
+            userSelect: "none",
+          }}
+        >
+          search...
         </div>
-      ))}
+      </div>
+      {/* <pre>{JSON.stringify(routeDetails, null, 2)}</pre> */}
+      {routeDetails
+        .filter((route) => route.tags.includes(activeTag))
+        .map((route, i) => (
+          <div
+            style={{
+              ...style_route,
+              marginBottom: expandPreview[i] ? "8rem" : "1rem",
+            }}
+            key={i}
+          >
+            <div style={style_route.endpoint}>
+              <div style={style_route.route}>
+                <div className=""></div>
+                {route.route}
+              </div>
+              {route.type.map((type, j) => (
+                <div
+                  key={j}
+                  style={{ ...style_route.label, ...style_route.label[type] }}
+                >
+                  {type}
+                </div>
+              ))}
+              {/* <div style={route.status === "live" ? style_route.status.ON : style_route.status.OFF}>o</div> */}
+            </div>
+            <div style={style_route.description}>{route.desc}</div>
+            {/* <div style={style_route.source}>{route.source}</div> */}
+            <div
+              className=""
+              style={{ marginBottom: "0.5rem", ...style_modify_response.label }}
+              onClick={() => handleClick(i)}
+            >
+              {expandPreview && expandPreview[i] ? "hide" : "preview"}
+            </div>
+            {expandPreview[i] && route.params && (
+              <table style={style_table.container}>
+                <thead>
+                  <tr style={style_table.header}>
+                    <th style={style_table.cell}>param</th>
+                    <th style={style_table.cell}>type</th>
+                    <th style={style_table.cell}>format</th>
+                    <th style={style_table.cell}>sample</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(route.params).map(([key, value]) => (
+                    <React.Fragment key={key}>
+                      {value.map((item, index) => (
+                        <tr
+                          key={index}
+                          style={style_table.row}
+                          onMouseEnter={(e) =>
+                            (e.currentTarget.style.backgroundColor =
+                              selectedBackgroundIndex
+                                ? "#f1f1f1"
+                                : "rgba(17, 17, 17, 0.682)")
+                          }
+                          onMouseLeave={(e) =>
+                            (e.currentTarget.style.backgroundColor =
+                              "transparent")
+                          }
+                        >
+                          <td style={style_table.cell}>{item.value}</td>
+                          <td style={style_table.cell}>{key}</td>
+                          <td style={style_table.cell}>{item.format}</td>
+                          <td style={style_table.cell}>{item.sample}</td>
+                        </tr>
+                      ))}
+                    </React.Fragment>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            <div style={style_route.preview}>
+              {expandPreview[i] && route.request && route.response && (
+                <>
+                  <div style={{ flexBasis: "25%" }}>
+                    {!loading ? (
+                      <div style={style_route.preview.request}>
+                        {route.request}
+                      </div>
+                    ) : (
+                      <div
+                        style={{
+                          ...style_route.preview.request,
+                          animation: "pulse 1.5s infinite ease-in-out",
+                        }}
+                      >
+                        {route.request}
+                      </div>
+                    )}
+                    <div style={style_modify_response}>
+                      <div
+                        style={style_modify_response.label}
+                        onClick={() => {
+                          setLoading(true);
+                          handleHit("http://localhost:5000/test");
+                        }}
+                      >
+                        hit
+                      </div>
+                      <div
+                        style={style_modify_response.label}
+                        onClick={() => handleCopy(route.request)}
+                      >
+                        copy
+                      </div>
+                      <div style={style_modify_response.label}>edit</div>
+                    </div>
+                  </div>
+                  <div style={{ flexBasis: "75%" }}>
+                    {!loading ? (
+                      <div style={style_route.preview.response}>
+                        {route.response}
+                      </div>
+                    ) : (
+                      <div style={style_route.preview.response}>
+                        <div
+                          style={{
+                            animation: "pulse 1.5s infinite ease-in-out",
+                            fontSize: "1.5rem",
+                          }}
+                        >
+                          loading...
+                        </div>
+                      </div>
+                    )}
+                    <div style={style_modify_response}>
+                      <div
+                        style={style_modify_response.label}
+                        onClick={() => handleCopy(route.request)}
+                      >
+                        copy
+                      </div>
+                      <div
+                        style={style_modify_response.label}
+                        onClick={() => handlePrettify(route.request)}
+                      >
+                        pretty
+                      </div>
+                      <div
+                        style={style_modify_response.label}
+                        onClick={() => handleSave(route.response, route.route)}
+                      >
+                        save
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        ))}
     </div>
   );
 }
