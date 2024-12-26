@@ -3,4 +3,6 @@
 
 function Infrastructure () {
 
+    // hit all the lines and each of the computers on the lines and stream and store snapshots of historical...
+
 } export default Infrastructure;

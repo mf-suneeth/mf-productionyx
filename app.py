@@ -6,8 +6,6 @@ import base64
 import re
 
 
-
-
 app = Flask(__name__)
 CORS(app)  # This will allow all domains
 
@@ -830,9 +828,6 @@ def overwrite_month_goals():
     date_obj = datetime.strptime(selected_date, '%Y-%m')
     formatted_date = date_obj.replace(day=1)
     formatted_date = formatted_date.strftime('%Y-%m-%d')
-
-
-    
 
     try:
             

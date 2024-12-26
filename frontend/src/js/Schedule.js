@@ -353,7 +353,7 @@ function Schedule() {
               <input id="monthYear" type="month" value={selectedDate} onChange={handleChange} placeholder="Select a month and year" style={{ width: "100%", padding: "1rem", fontSize: "1.5rem", border: "1px solid #DDDDDD", borderRadius: "0.5rem", height: "3rem", transition: "border-color 0.3s, box-shadow 0.3s" }} onFocus={(e) => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 5px rgba(59, 130, 246, 0.3)"; e.target.style.outline = "none"; }} onBlur={(e) => { e.target.style.borderColor = "#DDDDDD"; e.target.style.boxShadow = "none"; e.target.style.outline = "none"; }} />
             </form>
             {existingMonths && existingMonths.data && (
-              <div>
+              <div id="existing_months">
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem", justifyContent: "start", }}>
                   {Object.keys(existingMonths.data).map((month, index) => (
                     <div
@@ -394,7 +394,7 @@ function Schedule() {
             <div style={style_tab_header_label}>Paste Schedule</div>
           </div>
           <div className="tab-body" style={style_tab_body}>
-            <form onSubmit={handleSubmit} style={{ flexGrow: 1 }}>
+            <form id="submit" onSubmit={handleSubmit} style={{ flexGrow: 1 }}>
               <textarea value={input || ""} onChange={handleInput} rows={1} placeholder="Paste month here..." style={{ width: "100%", padding: "0.75rem", fontSize: "0.75rem", border: "1px solid #DDDDDD", borderRadius: "0.5rem", resize: "none", overflow: "hidden", outline: "none", transition: "border-color 0.3s, box-shadow 0.3s" }} onFocus={(e) => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 5px rgba(59, 130, 246, 0.3)"; }} onBlur={(e) => { e.target.style.borderColor = "#DDDDDD"; e.target.style.boxShadow = "none"; }} ref={(textarea) => { if (textarea) { textarea.style.height = "100%"; textarea.style.height = `${textarea.scrollHeight}px`; } }} />
             </form>
           </div>
@@ -440,7 +440,7 @@ function Schedule() {
             ) : (<div className="prompt-text" style={{ border: "1px solid #EEEEFF", backgroundColor: "#EEEEEE", height: "100%", borderRadius: "0.5rem", textAlign: "center", alignContent: "center", fontSize: "1rem", fontWeight: 500, color: "#CCCCCC", padding: "1rem 0rem" }}>paste schedule for preview</div>)}
           </div>
         </div>
-        <div className="update-goals" style={style_category_dialog}>
+        <div className="update-goals" style={style_category_dialog} id="goals">
           <div className="tab-header" style={style_tab_header}>
             <div style={style_tab_header_idx}>4</div>
             <div style={style_tab_header_label}>Update Goals</div>

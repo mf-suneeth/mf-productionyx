@@ -9,3 +9,83 @@
         "CPP" : 1000
     }
 }
+
+
+const routeDetails = [
+    // {
+    //     route: "/api/current",
+    //     type: ["GET", "HEAD"],
+    //     params: ["@start_date", "@end_date"],
+    //     desc: <div>Streams data from 3 most recently produced spools, used in Extrusion page under <a href="/extrusion">live.</a> Provided data includes spool_id, runtime & length</div>,
+    //     status: "live",
+    //     dependencies: "mf-ignition.production_schedules",
+    //     tags: ["extrusion", "public"],
+    //     request: "",
+    //     response: "",
+    // },
+    //extrusion  docs
+    {
+        route: "/api/extruder",
+        type: ["GET", "HEAD"],
+        params: {
+            optional: [
+                { value: "@start_date", format: "<YYYY-MM-DD>", sample: sample_formatted_start_date },
+                { value: "@end_date", format: "<YYYY-MM-DD>", sample: sample_formatted_end_date },
+            ],
+            required: [
+                { value: "@line_id", format: "<EX**>", sample: sample_formatted_line_id },
+            ],
+        },
+        desc: <div>Endpoint for retrieving the daily extrusion data.
+            This endpoint returns extrusion data for the current month
+            (or a specified date range), counts the occurrences of each status
+            (gs, qc, sc) in JSON format. Utilized in the <a href="/extrusion/#produced" style={style_section_link}>Extrusion &gt; produced</a> section*.
+        </div>,
+        status: "live",
+        dependencies: "mf-ignition.extrusion_runs",
+        tags: ["extrusion"],
+        request: <a
+            href={`http://localhost:5000/api/extruder?line_id=$EX03&start_date=${sample_formatted_start_date}&end_date=${sample_formatted_end_date}`}
+            style={style_request_link}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+        >
+            ~/api/extruder?line_id=$EX03&start_date={sample_formatted_start_date}&end_date={sample_formatted_end_date}
+        </a>,
+
+        response: sample_response,
+    },
+    // {
+    //     route: "/api/current/fiber",
+    //     type: ["GET", "HEAD"],
+    //     params: ["@start_date", "@end_date"],
+    //     desc: "Provides info on",
+    //     status: "live",
+    //     dependencies: "mf-ignition.production_spools",
+    //     tags: ["extrusion"],
+    //     request: "",
+    //     response: "",
+    // },
+    // {
+    //     route: "/api/current/compounding",
+    //     type: ["GET", "HEAD"],
+    //     params: ["@start_date", "@end_date"],
+    //     desc: "Provides info on",
+    //     status: "live",
+    //     dependencies: ["mf-ignition.compounding_lots", "mf-ignition.compounding_recipies", "mf-ignition.compounding_lots"],
+    //     tags: ["extrusion"],
+    //     request: "",
+    //     response: "",
+    // },
+    // {
+    //     route: "/api/current/ovens",
+    //     type: ["GET", "HEAD"],
+    //     params: ["@start_date", "@end_date"],
+    //     desc: "Provides info on",
+    //     status: "live",
+    //     dependencies: ["mf-ignition.ovens", "mf-ignition.ovens_unloading"],
+    //     tags: ["extrusion"],
+    //     request: "",
+    //     response: "",
+    // },
+]

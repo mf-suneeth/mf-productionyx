@@ -25,7 +25,7 @@ function App() {
               {/* <Link to="/">View</Link> */}
             </li>
             <li>
-              <Link to="/schedule">Data</Link>
+              <Link to="/schedule">Enter</Link>
             </li>
             <li>
               <Link to="/schedule">Schedule</Link>
