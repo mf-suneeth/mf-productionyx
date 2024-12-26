@@ -817,6 +817,22 @@ function Documentation() {
           fontSize: "1.25rem",
         }}
       >
+                <div
+          className=""
+          contentEditable
+          style={{
+            ...style_button_mode,
+            fontWeight: 200,
+            letterSpacing: "1px",
+            width: "150px",
+            backgroundColor: selectedBackgroundIndex ? "#f4f4f4" : "#111111",
+            color: selectedBackgroundIndex ? "#000000" : "#ffffff72",
+            cursor: "pointer",
+            userSelect: "none",
+          }}
+        >
+          search...
+        </div>
         {[
           "extrusion",
           "fiber",
@@ -850,22 +866,6 @@ function Documentation() {
             {tag}
           </div>
         ))}
-        <div
-          className=""
-          contentEditable
-          style={{
-            ...style_button_mode,
-            fontWeight: 200,
-            letterSpacing: "1px",
-            width: "200px",
-            backgroundColor: selectedBackgroundIndex ? "#f4f4f4" : "#111111",
-            color: selectedBackgroundIndex ? "#000000" : "#ffffff72",
-            cursor: "pointer",
-            userSelect: "none",
-          }}
-        >
-          search...
-        </div>
       </div>
       {/* <pre>{JSON.stringify(routeDetails, null, 2)}</pre> */}
       {routeDetails

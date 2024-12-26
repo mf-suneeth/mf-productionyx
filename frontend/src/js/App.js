@@ -17,7 +17,7 @@ function App() {
     <Router>
       <div className="App">
         <nav>
-          <ul style={{display: "flex", flexDirection: "row", alignItems: "center", padding: "1rem 3vw", gap: "2vw", fontWeight: 600}}>
+          <ul style={{display: "flex", flexDirection: "row", alignItems: "center", padding: "0.5rem 3vw", gap: "2vw", fontWeight: 600}}>
           <li>
             <Link to="#" style={{"fontSize" : "1.5rem"}}>Scheduler</Link>
             </li>
