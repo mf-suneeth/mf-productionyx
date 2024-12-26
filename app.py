@@ -685,7 +685,7 @@ def overwrite_month():
     data = request.get_json()
 
     if not data or 'selectedDate' not in data or 'input' not in data:
-        return jsonify({"error": "Missing required data (selectedDate or goals)"}), 400
+        return jsonify({"error": "Missing required data (selectedDate or schedule)"}), 400
     
     selected_date = data['selectedDate']
     schedule = data['input']
@@ -802,6 +802,74 @@ def overwrite_month():
         if cnx:
             cnx.close()
 
+@app.route('/api/goals/redo', methods=['POST'])
+def overwrite_month_goals():
+    """
+    Endpoint for overwriting and deleting monthly entries in the database.
+    
+    This function handles the overwriting and deletion of existing production schedule entries
+    for a specific month. It reads input data from the request and updates the database accordingly.
+    
+    Returns:
+    json: A response containing the number of rows added or an error message.
+    """
+    data = request.get_json()
+
+    # if not data or 'selectedDate' not in data or 'input' not in data:
+    #     return jsonify({"error": "Missing required data (selectedDate or goals)"}), 400
+
+    print(data)
+
+    if not data or 'selectedDate' not in data or 'goals' not in data:
+        return jsonify({"error": "Missing required data (selectedDate or goals)"}), 400
+
+    
+    selected_date = data['selectedDate']
+    goals = data['goals']
+
+    date_obj = datetime.strptime(selected_date, '%Y-%m')
+    formatted_date = date_obj.replace(day=1)
+    formatted_date = formatted_date.strftime('%Y-%m-%d')
+
+
+    
+
+    try:
+            
+        cnx = msc.connect(**IGNITION_DB_CLUSTER)
+        cursor = cnx.cursor(prepared=True)
+
+        query_stmt = """
+            INSERT INTO production_goals (
+                id,
+                date,
+                material_id,
+                goal
+            ) VALUES (%s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+                goal = VALUES(goal)
+        """
+
+        for material_id in goals:
+            id = f"{formatted_date}_{material_id}"
+            cursor.execute(query_stmt, [id, formatted_date, material_id, goals[material_id]])
+
+        cnx.commit()
+
+        return jsonify({"added_rows": cursor.rowcount})
+
+    except msc.Error as err:
+        print(f"Database error: {err}")
+        cnx.rollback()
+        return jsonify({"error": str(err)}), 500
+
+    finally:
+        if cursor:
+            cursor.close()
+        if cnx:
+            cnx.close()
+
+    
 def delete_entries_in_month():
     """
     Endpoint to delete entries from the production_schedule table within a specified date range.
@@ -911,6 +979,7 @@ def get_extruder():
                 status, 
                 DATE_FORMAT(start_time, %s) AS start_time, 
                 material_specs.material,
+                material_specs.material_id,
                 load_id,
                 filament_lot_changes.filament_lot,
                 filament_lot_changes.feedstock_lot_id
@@ -923,10 +992,7 @@ def get_extruder():
         """
         cursor.execute(query_1, ('%H:%i:%s','%H:%i:%s','%Y-%m-%d %H:%i:%s', start_date, end_date, line_id))
 
-        # zip the results into json
         columns_1 = [desc[0] for desc in cursor.description]  # Get column names
-        
-        # Use list comprehension to separate valid and errored rows
         rows = [dict(zip(columns_1, row)) for row in cursor.fetchall()]
 
         # Separate valid rows and errored rows
@@ -935,11 +1001,18 @@ def get_extruder():
             row for row in rows
             if any(value in [None, ''] for key, value in row.items() if key != 'load_id')
         ]
-        # get frequency of failures 
-        # print(results_1)
+
         failure_mode_frequency = {}
         ovens_load = {}
         campaign_statistics = {}
+
+        failure_rate = {
+            "good_spool" : 0,
+            "quality_control" : 0,
+            "scrap" : 0,
+        }
+
+        materials_produced = []
         campaign_lots = {
             "feedstock": set(), 
             "filament": set()
@@ -963,7 +1036,10 @@ def get_extruder():
                 campaign_lots["feedstock"].add(row["feedstock_lot_id"])
 
             if "filament_lot" in row and row["filament_lot"]:
-                campaign_lots["filament"].add(row["filament_lot"])     
+                campaign_lots["filament"].add(row["filament_lot"])    
+
+            if "material_id" in row and row["material_id"] not in materials_produced:
+                materials_produced.append(row["material_id"])
               
         
         campaign_lots["feedstock"] = list(campaign_lots["feedstock"])
@@ -973,7 +1049,7 @@ def get_extruder():
         # implement the date range propery
 
         query_2 = """
-        SELECT DISTINCT o1.oven_name
+            SELECT DISTINCT o1.oven_name
             FROM ovens o1
             LEFT JOIN (
                 SELECT DISTINCT oven_name
@@ -982,8 +1058,27 @@ def get_extruder():
             ) o2 ON o1.oven_name = o2.oven_name
             WHERE o1.oven_name IS NOT NULL AND o2.oven_name IS NULL"""
         
-        cursor.execute(query_2)
+        query_3 = """
+            SELECT material_id, goal, date
+            FROM production_goals
+            WHERE DATE_FORMAT(date, '%Y-%m') >= DATE_FORMAT(%s, '%Y-%m')
+            AND DATE_FORMAT(date, '%Y-%m') <= DATE_FORMAT(%s, '%Y-%m')
+        """
+        
+        cursor.execute(query_3, (start_date, end_date))
 
+        columns_3 = [desc[0] for desc in cursor.description]  # Get column names
+        results_3 = [dict(zip(columns_3, row)) for row in cursor.fetchall()]
+
+        material_goals = {}
+        for row in results_3:
+            material_id = row['material_id'] 
+            goal = row['goal'] 
+            
+            if material_id in material_goals:
+                material_goals[material_id] += goal
+            else:
+                material_goals[material_id] = goal
 
         campaign_statistics["ovens"] = {
             "available" : [row[0] for row in cursor.fetchall()],
@@ -994,10 +1089,7 @@ def get_extruder():
         cursor.close()
         cnx.close()
 
-
-
-
-        return jsonify({"produced": results_1, "scheduled": 60 * days_diff, "projected": 100 * days_diff, "failures" : failure_mode_frequency, "statistics" : campaign_statistics, "ovens": ovens_load, "lots": campaign_lots, "errored" : errored_1})
+        return jsonify({"produced": results_1, "scheduled": material_goals, "projected": 100 * days_diff, "active": materials_produced, "failures" : failure_mode_frequency, "statistics" : campaign_statistics, "ovens": ovens_load, "lots": campaign_lots, "errored" : errored_1})
 
 
     except Exception as e:
@@ -1050,6 +1142,7 @@ def get_extruder_live():
                 DATE_FORMAT(start_time, %s) AS start_time, 
                 material_specs.material,
                 load_id,
+                line_speed,
                 filament_lot_changes.filament_lot,
                 filament_lot_changes.feedstock_lot_id
             FROM extrusion_runs
@@ -1060,14 +1153,32 @@ def get_extruder_live():
             LIMIT 3
         """
 
-        cursor.execute(query_1, ('%H:%i:%s', '%Y-%m-%d %H:%i:%s', line_id))
+        cursor.execute(query_1, ('%H:%i:%s', '%Y-%m-%d %H:%i:%S', line_id))
 
         # zip the results into json
         columns_1 = [desc[0] for desc in cursor.description]  # Get column names
         results_1 = [dict(zip(columns_1, row)) for row in cursor.fetchall()]
-          
-        cursor.close()
-        cnx.close()
+
+
+
+
+        for row in results_1:
+            if not row['run_time']:  # Check if run_time is not set
+                start_time = datetime.strptime(row['start_time'], '%Y-%m-%d %H:%M:%S')  # Convert start_time to datetime
+                current_time = datetime.now()  # Get the current time
+                run_time = current_time - start_time  # Calculate the difference
+
+                # Get hours, minutes, and seconds from timedelta
+                hours, remainder = divmod(run_time.seconds, 3600)  # Divmod to get hours and the remainder
+                minutes, seconds = divmod(remainder, 60)  # Get minutes and seconds from remainder
+
+                # Add the hours from the timedelta days (if any)
+                hours += run_time.days * 24  # Add the days (in hours) to hours if timedelta spans multiple days
+
+                # Format run_time as HH:MM:SS
+                row['run_time'] = f"{hours:02}:{minutes:02}:{seconds:02}"  # Format as 'HH:MM:SS'
+                row['run_time_sec'] = run_time.total_seconds()  # Optionally, store the time in seconds
+                row['meters_on_spool'] = round(run_time.total_seconds() * 2, 3) if run_time.total_seconds() else 0
 
         return jsonify({"live": results_1})
 
