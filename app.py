@@ -19,14 +19,18 @@ from ingest import ingest, ingest2, ingest3
 
 PRODUCTION_MATRIX = {}
 
-@app.route('/test', methods=['GET'])
+# ////////////////////////////////////////////////////
+# System Routes
+# ////////////////////////////////////////////////////
+
+@app.route('/ping', methods=['GET'])
 def api_default():
     import time
 
     delay = 10
     time.sleep(delay)
 
-    return jsonify({"testEndpoint":f"Hello from the backend! - slept for {delay} seconds"})
+    return jsonify({"pong": f"Hello from the backend! - slept for {delay} seconds"})
 
 def parse_fiber(req):
     """
@@ -66,37 +70,9 @@ def get_data():
     cnx = msc.connect(**IGNITION_DB_CLUSTER)
     return jsonify({"message": "Successfully connected to database"})
 
-@app.route('/api/submit', methods=['GET'])
-def submit_form():
-    """
-    Endpoint for creating and writing monthly entries.
-    
-    This function provides a placeholder endpoint that handles the submission of
-    monthly entries to the backend. It doesn't interact with the database in this 
-    implementation.
-    
-    Returns:
-    json: A response indicating success or failure.
-    """
-    return jsonify({"message": "Hello from the backend!"})
-
-@app.route('/api/preview', methods=['POST'])
-def preview_data():
-    """
-    Endpoint for previewing data.
-    
-    This route accepts POST requests, extracts the provided data, and returns it 
-    in the response. It's intended for previewing data before submitting or processing it.
-    
-    Args:
-    data (dict): The input data in JSON format, which contains the 'data' key.
-
-    Returns:
-    json: The data sent in the request.
-    """
-    data = request.get_json()
-    return jsonify(data['data'])
-
+# ////////////////////////////////////////////////////
+# Forecast Routes
+# ////////////////////////////////////////////////////
 
 @app.route('/api/current', methods=['GET'])
 def get_current():
@@ -403,184 +379,11 @@ def get_current_compounding():
     except Exception as e:
         print(f"Error: {e}")
         return jsonify({"error": "An unknown error occurred", "details": str(e)}), 500  
-    
 
-@app.route('/api/current/extrusion', methods=['GET'])
-def get_current_day_extrusion():
-    """
-    Endpoint for retrieving the daily extrusion data.
-    
-    This function retrieves extrusion data for the current month (or a specified date range),
-    counts the occurrences of each status (gs, qc, sc), and returns the results in JSON format.
-    
-    Returns:
-    json: A response containing the extrusion data.
-    """
-    try:
-        cnx = msc.connect(**IGNITION_DB_CLUSTER)
-        cursor = cnx.cursor()
-
-        start_date = "2024-11-01"
-        end_date = "2024-12-01"
-
-        query = """
-            SELECT
-                DATE(start_time) AS date,
-                line_id,
-                material_id,
-                COUNT(spool_id) as net,
-                COUNT(CASE WHEN status = 0 THEN 1 END) as gs,
-                COUNT(CASE WHEN status = 1 THEN 1 END) as qc,
-                COUNT(CASE WHEN status = 2 THEN 1 END) as sc
-            FROM extrusion_runs
-            WHERE start_time BETWEEN %s AND %s
-            GROUP BY date, line_id, material_id
-            ORDER BY date, line_id, material_id
-        """
-        cursor.execute(query, (start_date, end_date))
-
-        results = cursor.fetchall()
-
-        # format the results into json
-        production_line_date_material_status = {}
-
-
-        for row in results:
-            if len(row) == 7:
-                date, line_id, material_id, net, gs, qc, sc = row
-
-                date = str(date)
-
-                if date in production_line_date_material_status:
-                    # append to existing structure
-                    production_line_date_material_status[date][line_id] = {
-                        "material_id" : material_id,
-                        "net" : net,
-                        "gs" : gs,
-                        "qc" : qc,
-                        "sc" : sc,
-                    }
-                else:
-                    production_line_date_material_status[date] = {
-                        line_id: {
-                            "material_id" : material_id,
-                            "net" : net,
-                            "gs" : gs,
-                            "qc" : qc,
-                            "sc"  : sc,
-                        }
-                    }
-
-            else: # TODO: could raise this as a possible error
-                print("Unexpected row structure:", row)
-                
-        cursor.close()
-        cnx.close()
-
-        return jsonify({"data": production_line_date_material_status})
-
-
-    except Exception as e:
-        print(f"Error: {e}")
-        return jsonify({"error": "An unknown error occurred", "details": str(e)}), 500
-
-
-@app.route('/api/current/goals', methods=['GET'])
-def get_current_day_goals(day, line, material):
-    """
-    Placeholder endpoint for retrieving current day oven data.
-    
-    This is a placeholder function and does not currently implement any logic.
-    
-    Args:
-    day (str): The day of the week.
-    line (str): The production line identifier.
-    material (str): The material type.
-    
-    Returns:
-    None
-    """
-    goals = {"ONX": 8500, "OXL": 60, "OFR" : 340, "172" : 990}
-    return jsonify({"goals" : goals})
-
-
-    pass
-
-@app.route('/api/cal', methods=['GET'])
-def produce_data():
-    """
-    Produce data based on the ingested input and return a production matrix.
-    
-    This function processes a schedule, extracts relevant material data, and 
-    generates a production matrix that includes goals, schedules, and other details.
-    
-    Returns:
-    json: The production matrix in JSON format.
-    """
-    schedule = [line.split('\t') for line in ingest3.split('\n')]
-
-    month_schedule = {}
-    material_freq = {}
-
-    week_stor = ""
-    for row in schedule:
-        date, week, day, EX00, EX01, EX03, EX04, Compounding, Fiber, Other = row
-
-        week_stor = week if week else week_stor
-
-        if date and day.strip():
-            day_key = f"{date}"
-
-            month_schedule[day_key] = {
-                "Week": week_stor,
-                "EX00": {EX00: ""} if EX00 else {},
-                "EX01": {EX01: ""} if EX01 else {},
-                "EX03": {EX03: ""} if EX03 else {},
-                "EX04": {EX04: ""} if EX04 else {},
-                "Compounding": {Compounding: ""} if Compounding else {},
-                "Fiber": parse_fiber(Fiber) if Fiber else {},
-                "Other": {Other: ""} if Other else {},
-            }
-
-            for process, materials in month_schedule[day_key].items():
-                if process != "Week" and materials:
-                    for material, goal in materials.items():
-                        material = material.strip()
-                        if material not in material_freq:
-                            material_freq[material] = [1, int(goal) if goal else 0]
-                        else:
-                            material_freq[material][0] += 1
-                            material_freq[material][1] += int(goal) if goal else 0
-
-            if day.strip() == "Friday":
-                for day in ["Saturday", "Sunday"]:
-                    date = int(date) + 1
-                    day_key = f"{date}"
-                    month_schedule[day_key] = {
-                        "Week": week_stor,
-                        "EX00": {},
-                        "EX01": {},
-                        "EX03": {},
-                        "EX04": {},
-                        "Compounding": {},
-                        "Fiber": {},
-                        "Other": {},
-                    }
-
-    now = datetime.now()
-    formatted_date = now.strftime("%m-%Y")
-
-    PRODUCTION_MATRIX.update({
-        "Signature": formatted_date,
-        "Schedule": month_schedule,
-        "Goals": material_freq,
-        "Notes": "",
-        "Updates": ""
-    })
-
-    return json.dumps(PRODUCTION_MATRIX)
-
-@app.route('/api/redo', methods=['POST'])
+# ////////////////////////////////////////////////////
+# Schedule Routes
+# ////////////////////////////////////////////////////
+@app.route('/api/schedule/redo', methods=['POST'])
 def overwrite_month():
     """
     Endpoint for overwriting and deleting monthly entries in the database.
@@ -775,7 +578,6 @@ def overwrite_month_goals():
         if cnx:
             cnx.close()
 
-    
 def delete_entries_in_month():
     """
     Endpoint to delete entries from the production_schedule table within a specified date range.
@@ -828,6 +630,10 @@ def validate_dates(start_date, end_date):
         return True
     except ValueError as e:
         return False
+
+# ////////////////////////////////////////////////////
+# Production Routes
+# ////////////////////////////////////////////////////
 
 @app.route('/api/extruder', methods=['GET'])
 def get_extruder():
@@ -1121,7 +927,248 @@ def get_schedule_existing():
         print(f"Error: {e}")
         return jsonify({"error": "An unknown error occurred", "details": str(e)}), 500
 
+
+# ////////////////////////////////////////////////////
+# Device/Hardware Routes
+# ////////////////////////////////////////////////////
+
+@app.route('/api/hardware/', methods=['GET'])
+def get_hardware():
+    """returns sheet of all hardware available in billerica -- could filter by whats needed for daily production goals"""
+    pass
+
+@app.route('/api/hardware/beaglebone/', methods=['GET'])
+def get_beaglebone():
+    "responsible for pulling state & process details off beaglebones"
+    pass
+
+@app.route('/api/hardware/rumba/', methods=['GET'])
+def get_rumba():
+    "responsible for pulling status of rumba"
+    pass
+
+@app.route('/api/hardware/zumbach/', methods=['GET'])
+def get_beaglebone():
+    """ responsible for testing laser stream for each line"""
+    pass
+
+@app.route('/api/machine/extruder/', methods=['GET'])
+def get_extruder_params():
+    """ responsible for pulling extruder details --> heater temps bath temps"""
+    pass
+
+@app.route('/api/machine/fiber/', methods=['GET'])
+def get_beaglebone():
+    """ responsible for pulling fiber details --> heater temps bath temps"""
+    pass
+
+@app.route('/api/machine/respool/', methods=['GET'])
+def get_beaglebone():
+    """ responsible for pulling respool details --> respool station"""
+    pass
+
+@app.route('/api/aux/printer/', methods=['GET'])
+def get_printer():
+    """pings all printers"""
+    pass
+
+# ////////////////////////////////////////////////////
+# Network Routes
+# ////////////////////////////////////////////////////
+
+@app.route('api/network/ignition/', methods=['GET'])
+def get_network():
+    """ responsible for getting latency and read writes to database as well as tracking db state"""
+    pass
+
+# ////////////////////////////////////////////////////
+# Alert/status Routes
+# ////////////////////////////////////////////////////
+
+@app.route('api/alert/active', methods=['GET'])
+def get_alert_active():
+    """ responsible for high priority current process failure alerts slack/email/text"""
+    pass
+
+@app.route('api/alert', methods=['GET'])
+def get_alert():
+    """ responsible for general failure alerts, even with machines that are idle"""
+    pass
+
 if __name__ == '__main__':
     app.run(debug=True)
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# @app.route('/api/current/extrusion', methods=['GET'])
+# def get_current_day_extrusion():
+#     """
+#     Endpoint for retrieving the daily extrusion data.
+    
+#     This function retrieves extrusion data for the current month (or a specified date range),
+#     counts the occurrences of each status (gs, qc, sc), and returns the results in JSON format.
+    
+#     Returns:
+#     json: A response containing the extrusion data.
+#     """
+#     try:
+#         cnx = msc.connect(**IGNITION_DB_CLUSTER)
+#         cursor = cnx.cursor()
+
+#         start_date = "2024-11-01"
+#         end_date = "2024-12-01"
+
+#         query = """
+#             SELECT
+#                 DATE(start_time) AS date,
+#                 line_id,
+#                 material_id,
+#                 COUNT(spool_id) as net,
+#                 COUNT(CASE WHEN status = 0 THEN 1 END) as gs,
+#                 COUNT(CASE WHEN status = 1 THEN 1 END) as qc,
+#                 COUNT(CASE WHEN status = 2 THEN 1 END) as sc
+#             FROM extrusion_runs
+#             WHERE start_time BETWEEN %s AND %s
+#             GROUP BY date, line_id, material_id
+#             ORDER BY date, line_id, material_id
+#         """
+#         cursor.execute(query, (start_date, end_date))
+
+#         results = cursor.fetchall()
+
+#         # format the results into json
+#         production_line_date_material_status = {}
+
+
+#         for row in results:
+#             if len(row) == 7:
+#                 date, line_id, material_id, net, gs, qc, sc = row
+
+#                 date = str(date)
+
+#                 if date in production_line_date_material_status:
+#                     # append to existing structure
+#                     production_line_date_material_status[date][line_id] = {
+#                         "material_id" : material_id,
+#                         "net" : net,
+#                         "gs" : gs,
+#                         "qc" : qc,
+#                         "sc" : sc,
+#                     }
+#                 else:
+#                     production_line_date_material_status[date] = {
+#                         line_id: {
+#                             "material_id" : material_id,
+#                             "net" : net,
+#                             "gs" : gs,
+#                             "qc" : qc,
+#                             "sc"  : sc,
+#                         }
+#                     }
+
+#             else: # TODO: could raise this as a possible error
+#                 print("Unexpected row structure:", row)
+                
+#         cursor.close()
+#         cnx.close()
+
+#         return jsonify({"data": production_line_date_material_status})
+
+
+#     except Exception as e:
+#         print(f"Error: {e}")
+#         return jsonify({"error": "An unknown error occurred", "details": str(e)}), 500
+
+# @app.route('/api/cal', methods=['GET'])
+# def produce_data():
+    """
+    Produce data based on the ingested input and return a production matrix.
+    
+    This function processes a schedule, extracts relevant material data, and 
+    generates a production matrix that includes goals, schedules, and other details.
+    
+    Returns:
+    json: The production matrix in JSON format.
+    """
+    schedule = [line.split('\t') for line in ingest3.split('\n')]
+
+    month_schedule = {}
+    material_freq = {}
+
+    week_stor = ""
+    for row in schedule:
+        date, week, day, EX00, EX01, EX03, EX04, Compounding, Fiber, Other = row
+
+        week_stor = week if week else week_stor
+
+        if date and day.strip():
+            day_key = f"{date}"
+
+            month_schedule[day_key] = {
+                "Week": week_stor,
+                "EX00": {EX00: ""} if EX00 else {},
+                "EX01": {EX01: ""} if EX01 else {},
+                "EX03": {EX03: ""} if EX03 else {},
+                "EX04": {EX04: ""} if EX04 else {},
+                "Compounding": {Compounding: ""} if Compounding else {},
+                "Fiber": parse_fiber(Fiber) if Fiber else {},
+                "Other": {Other: ""} if Other else {},
+            }
+
+            for process, materials in month_schedule[day_key].items():
+                if process != "Week" and materials:
+                    for material, goal in materials.items():
+                        material = material.strip()
+                        if material not in material_freq:
+                            material_freq[material] = [1, int(goal) if goal else 0]
+                        else:
+                            material_freq[material][0] += 1
+                            material_freq[material][1] += int(goal) if goal else 0
+
+            if day.strip() == "Friday":
+                for day in ["Saturday", "Sunday"]:
+                    date = int(date) + 1
+                    day_key = f"{date}"
+                    month_schedule[day_key] = {
+                        "Week": week_stor,
+                        "EX00": {},
+                        "EX01": {},
+                        "EX03": {},
+                        "EX04": {},
+                        "Compounding": {},
+                        "Fiber": {},
+                        "Other": {},
+                    }
+
+    now = datetime.now()
+    formatted_date = now.strftime("%m-%Y")
+
+    PRODUCTION_MATRIX.update({
+        "Signature": formatted_date,
+        "Schedule": month_schedule,
+        "Goals": material_freq,
+        "Notes": "",
+        "Updates": ""
+    })
+
+    return json.dumps(PRODUCTION_MATRIX)

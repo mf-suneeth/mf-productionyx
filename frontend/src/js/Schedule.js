@@ -314,7 +314,7 @@ function Schedule() {
 
     try {
       setIsSubmitting(true);
-      const response = await fetch("http://localhost:5000/api/redo", {
+      const response = await fetch("http://localhost:5000/api/schedule/redo", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

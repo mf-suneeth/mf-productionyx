@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import moment from "moment";
 
-const sample_host_location = "http://localhost:5000";
+const sample_hostname_port = "http://localhost:5000";
 const sample_start_date = moment();
 const sample_end_date = moment().add(1, "days");
 
@@ -48,20 +48,21 @@ const theme_style_documentation = {
   experimental: {},
 };
 
-function Documentation() {
+function Documentation(props) {
   const [isHovered, setIsHovered] = useState(false);
-  const [selectedBackgroundIndex, setSelectedBackgroundIndex] = useState(0);
+//   const [props.mode, setSelectedBackgroundIndex] = useState(0);
   const [rowsModified, setRowsModified] = useState(30);
   const [freshFetch, setFreshFetch] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [activeTag, setActiveTag] = useState("route");
+  const [howTo, setHowTo] = useState(false);
 
   const style_button_mode = {
     padding: "0.2rem 0.5rem",
-    border: `0.5px solid ${selectedBackgroundIndex ? "#DDDDDD" : "#333333"}`,
-    backgroundColor: selectedBackgroundIndex ? "#f4f4f4" : "#111111",
-    color: selectedBackgroundIndex ? "#333333" : "#ffffff72",
+    border: `0.5px solid ${props.mode ? "#DDDDDD" : "#333333"}`,
+    backgroundColor: props.mode ? "#f4f4f4" : "#111111",
+    color: props.mode ? "#333333" : "#ffffff72",
     borderRadius: "0.25rem",
     fontWeight: "400",
     display: "flex",
@@ -194,8 +195,8 @@ function Documentation() {
       textDecoration: "underline",
       textUnderlineOffset: "2px",
       textDecorationStyle: "solid",
-      textDecorationColor: selectedBackgroundIndex ? "#dddddd" : "#171717",
-      color: selectedBackgroundIndex ? "#333333" : "#ffffff72",
+      textDecorationColor: props.mode ? "#dddddd" : "#1e1e1e",
+      color: props.mode ? "#333333" : "#ffffff72",
     },
   };
 
@@ -206,7 +207,7 @@ function Documentation() {
     fontSize: "1.5rem",
     // lineHeight: "3rem",
     // color: selectedBackgroundIndex ? "#111111" : "#bdbdbd",
-    color: selectedBackgroundIndex
+    color: props.mode
       ? isHovered
         ? "#171717"
         : "#111111cb"
@@ -220,8 +221,8 @@ function Documentation() {
     textDecoration: "none",
     borderRadius: "0.25rem",
     fontSize: "1rem",
-    backgroundColor: selectedBackgroundIndex ? "#f4f4f4" : "#111111",
-    color: selectedBackgroundIndex ? "#333333" : "#ffffff72",
+    backgroundColor: props.mode ? "#f4f4f4" : "#111111",
+    color: props.mode ? "#333333" : "#ffffff72",
     letterSpacing: "1px",
   };
 
@@ -234,14 +235,14 @@ function Documentation() {
       borderRadius: "5rem",
     },
     header: {
-      backgroundColor: selectedBackgroundIndex ? "#f4f4f4" : "#111111ae",
+      backgroundColor: props.mode ? "#f4f4f4" : "#111111ae",
       textAlign: "left",
       borderRadius: "5rem",
     },
     cell: {
-      border: `1px solid ${selectedBackgroundIndex ? "#dddddd" : "#171717"}`,
+      border: `1px solid ${props.mode ? "#dddddd" : "#171717"}`,
       padding: "0.75rem",
-      color: selectedBackgroundIndex ? "#333333" : "#696969",
+      color: props.mode ? "#333333" : "#696969",
     },
     row: {
       transition: "background-color 0.3s ease",
@@ -324,36 +325,63 @@ function Documentation() {
       flexDirection: "row",
       gap: "1rem",
       // textDecoration: "underline",
-      maxHeight: "20rem",
+      //   maxHeight: "20rem",
       wordBreak: "break-all",
       whiteSpace: "normal",
       request: {
         marginBottom: "0.25rem",
-        height: "100%",
         borderRadius: "0.25rem",
         // overflow: "wrap",
+        height: "90%",
         padding: "1rem",
         textDecoration: "none",
-        border: `1px solid ${selectedBackgroundIndex ? "#dddddd" : "#171717"}`,
+        border: `1px solid ${props.mode ? "#dddddd" : "#171717"}`,
       },
       response: {
+        height: "90%",
+        lineHeight: "1.25rem",
         marginBottom: "0.25rem",
-        height: "100%",
         borderRadius: "0.25rem",
-        backgroundColor: selectedBackgroundIndex
+        backgroundColor: props.mode
           ? "rgb(244, 244, 244)"
           : "#111111ae",
         overflow: "scroll",
         padding: "1rem",
         textDecoration: "none",
-        color: selectedBackgroundIndex ? "#111111" : "#bdbdbd",
+        color: props.mode ? "#111111" : "#bdbdbd",
         border: `1px solid ${
-          selectedBackgroundIndex ? "#dddddd" : "#2929298a"
+          props.mode ? "#dddddd" : "#2929298a"
         }`,
       },
     },
   };
   const routeDetails = [
+    // init routes
+    {
+      route: "/api/load",
+      type: ["HEAD"],
+      desc: (
+        <div>
+          Tests ignition db connection, used everywhere live data appears.
+        </div>
+      ),
+      status: "live",
+      source: "mf-ignition.production_schedule",
+      tags: ["database", "ignition", "route"],
+      request: (
+        <a
+          href={`http://localhost:5000/api/load`}
+          style={style_request_link}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        >
+          {sample_hostname_port}/api/load
+        </a>
+      ),
+      response: (
+        <div className="">"message": "Successfully connected to database"</div>
+      ),
+    },
     // production routes
     {
       route: "/api/current",
@@ -374,7 +402,7 @@ function Documentation() {
       },
       desc: (
         <div>
-          Endpoint for retrieving the daily extrusion data. Returns data on
+          Endpoint for retrieving daily extrusion schedule. Returns data on
           which line is producing which material on a given shift. Used in the
           production page under{" "}
           <a href="/production/#materials_schedule" style={style_section_link}>
@@ -393,7 +421,7 @@ function Documentation() {
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
-          {sample_host_location}/api/current?start_date=
+          {sample_hostname_port}/api/current?start_date=
           {sample_formatted_start_date}
           &end_date={sample_formatted_end_date}
         </a>
@@ -419,8 +447,8 @@ function Documentation() {
       },
       desc: (
         <div>
-          Endpoint for retrieving the daily fiber data. Returns data on which
-          line is producing which material at a given time. Used in the
+          Endpoint for retrieving the daily fiber schedule. Returns data on
+          which line is producing which material at a given time. Used in the
           Production page under{" "}
           <a href="/production/#produced_fiber" style={style_section_link}>
             Production &gt; Fiber
@@ -438,7 +466,7 @@ function Documentation() {
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
-          {sample_host_location}/api/current/fiber?start_date=
+          {sample_hostname_port}/api/current/fiber?start_date=
           {sample_formatted_start_date}
           &end_date={sample_formatted_end_date}
         </a>
@@ -478,9 +506,9 @@ function Documentation() {
       },
       desc: (
         <div>
-          Endpoint for retrieving the daily compounding data. Returns data on
-          which lots were used, mass of material compounded and remaining mass
-          of lot. sed in the Production page under{" "}
+          Endpoint for retrieving the daily compounding schedule. Returns data
+          on which lots were used, mass of material compounded and remaining
+          mass of lot. sed in the Production page under{" "}
           <a href="/production/#compounded_lots" style={style_section_link}>
             Production &gt; Compounding
           </a>
@@ -497,8 +525,10 @@ function Documentation() {
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
-          {sample_host_location}/api/current/compounding?start_date=
+          {sample_hostname_port}
+          <br></br>/api/current/compounding?<br></br>start_date=
           {sample_formatted_start_date}
+          <br></br>
           &end_date={sample_formatted_end_date}
         </a>
       ),
@@ -565,7 +595,7 @@ function Documentation() {
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
-          {sample_host_location}/api/extruder?line_id=$EX03&start_date=
+          {sample_hostname_port}/api/extruder?line_id=$EX03&start_date=
           {sample_formatted_start_date}
           &end_date={sample_formatted_end_date}
         </a>
@@ -607,7 +637,7 @@ function Documentation() {
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
-          {sample_host_location}/api/extruder/live?line_id=$EX03&start_date=
+          {sample_hostname_port}/api/extruder/live?line_id=$EX03&start_date=
           {sample_formatted_start_date}
           &end_date={sample_formatted_end_date}
         </a>
@@ -644,7 +674,7 @@ function Documentation() {
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
-          {sample_host_location}/api/schedule/existing
+          {sample_hostname_port}/api/schedule/existing
         </a>
       ),
 
@@ -661,7 +691,7 @@ function Documentation() {
       }),
     },
     {
-      route: "/api/redo",
+      route: "/api/schedule/redo",
       type: ["POST", "PUT"],
       desc: (
         <div>
@@ -680,12 +710,12 @@ function Documentation() {
       tags: ["schedule", "route"],
       request: (
         <a
-          href={`http://localhost:5000/api/redo`}
+          href={`http://localhost:5000/api/schedule/redo`}
           style={style_request_link}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
-          {sample_host_location}/api/redo
+          {sample_hostname_port}/api/schedule/redo
         </a>
       ),
 
@@ -722,7 +752,7 @@ function Documentation() {
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
-          {sample_host_location}/api/goals/redo
+          {sample_hostname_port}/api/goals/redo
         </a>
       ),
 
@@ -734,6 +764,407 @@ function Documentation() {
           </div>
         </>
       ),
+    },
+    // hardware routes
+    {
+      route: "/api/hardware/",
+      type: ["GET"],
+      desc: (
+        <div>
+          Lorem ipsum dolor sit amet ipsing consequiter sont.
+          <a href="/schedule/#goals" style={style_section_link}>
+            lorem &gt; ipsum
+          </a>
+          .
+        </div>
+      ),
+      status: "live",
+      source: "mf-ignition.production_schedule",
+      tags: ["schedule", "route"],
+      request: (
+        <a
+          href={`enter_href_here`}
+          style={style_request_link}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        >
+          {sample_hostname_port}/api/hardware/
+        </a>
+      ),
+      response: <div>Sample response goes here.</div>,
+    },
+    {
+      route: "/api/hardware/beaglebone",
+      type: ["GET", "ASYNC"],
+      params: {
+        required: [
+          {
+            value: "@process_id",
+            format: "<EX__> or <FP__> or  <RS__>",
+            sample: `FP0${randomizeLineId()} RS0${randomizeLineId()} `,
+          },
+        ],
+      },
+      desc: (
+        <div>
+          Responsible for getting online status, device state, memory
+          utilization and other device details. States appear in Hardware Page
+          under devices:
+          <a href="/hardware/#devices" style={style_section_link}>
+            Hardware &gt; Devices
+          </a>
+          .
+        </div>
+      ),
+      status: "live",
+      source: "",
+      tags: ["hardware", "route"],
+      request: (
+        <a
+          href={`enter_href_here`}
+          style={style_request_link}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        >
+          {sample_hostname_port}/api/hardware/beaglebone
+        </a>
+      ),
+      response: <div>Sample response goes here.</div>,
+    },
+    {
+      route: "/api/hardware/rumba",
+      type: ["GET", "ASYNC"],
+      params: {
+        required: [
+          {
+            value: "@process_id",
+            format: "<EX__> or <FP__> or  <RS__>",
+            sample: `EX0${randomizeLineId()} FP0${randomizeLineId()} RS0${randomizeLineId()} `,
+          },
+        ],
+      },
+      desc: (
+        <div>
+          Responsible for getting online status, device state, memory
+          utilization and other device details. States appear in Hardware Page
+          under devices:
+          <a href="/hardware/#devices" style={style_section_link}>
+            Hardware &gt; Devices
+          </a>
+          .
+        </div>
+      ),
+      status: "live",
+      source: "",
+      tags: ["hardware", "route"],
+      request: (
+        <a
+          href={`enter_href_here`}
+          style={style_request_link}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        >
+          {sample_hostname_port}/api/hardware/rumba?pid=FP07
+        </a>
+      ),
+      response: <div>Sample response goes here.</div>,
+    },
+    {
+      route: "/api/hardware/zumbach",
+      type: ["GET", "ASYNC"],
+      params: {
+        required: [
+          {
+            value: "@process_id",
+            format: "<EX__> or <FP__>",
+            sample: `FP0${randomizeLineId()} RS0${randomizeLineId()} `,
+          },
+        ],
+      },
+      desc: (
+        <div>
+          Responsible for getting online status, device state, memory
+          utilization and other device details. States appear in Hardware Page
+          under devices:
+          <a href="/hardware/#devices" style={style_section_link}>
+            Hardware &gt; Devices
+          </a>
+          .
+        </div>
+      ),
+      status: "live",
+      source: "",
+      tags: ["hardware", "route"],
+      request: (
+        <a
+          href={`enter_href_here`}
+          style={style_request_link}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        >
+          {sample_hostname_port}/api/hardware/rumba?pid=FP05
+        </a>
+      ),
+      response: <div>Sample response goes here.</div>,
+    },
+    {
+      route: "/api/machine/extruder",
+      type: ["GET", "PATCH"],
+      params: {
+        required: [
+          {
+            value: "@process_id",
+            format: "<EX__>",
+            sample: `EX0${randomizeLineId()}`,
+          },
+        ],
+      },
+      desc: (
+        <div>
+          Responsible for streaming process parameters, also able to reboot and
+          reset the line data.
+          <a href="/hardware/#devices" style={style_section_link}>
+            Hardware &gt; Machine
+          </a>
+          .
+        </div>
+      ),
+      status: "live",
+      source: "",
+      tags: ["machine", "hardware", "route"],
+      request: (
+        <a
+          href={`enter_href_here`}
+          style={style_request_link}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        >
+          {sample_hostname_port}/api/machine/extruder?{sample_formatted_line_id}
+        </a>
+      ),
+      response: <div>Sample response goes here.</div>,
+    },
+    {
+      route: "/api/machine/fiber",
+      type: ["GET", "PATCH"],
+      params: {
+        required: [
+          {
+            value: "@process_id",
+            format: "<FP__>",
+            sample: `FP0${randomizeLineId()}`,
+          },
+        ],
+      },
+      desc: (
+        <div>
+          Responsible for streaming process parameters (heater, clamp, dehair),
+          also able to reboot and reset the line data.{" "}
+          <a href="/hardware/#devices" style={style_section_link}>
+            Harware &gt; Machine &gt; Fiber
+          </a>
+          .
+        </div>
+      ),
+      status: "live",
+      source: "",
+      tags: ["machine", "hardware", "route"],
+      request: (
+        <a
+          href={`enter_href_here`}
+          style={style_request_link}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        >
+          {sample_hostname_port}/api/machine/extruder?{sample_formatted_line_id}
+        </a>
+      ),
+      response: <div>Sample response goes here.</div>,
+    },
+    {
+      route: "/api/machine/respool",
+      type: ["GET", "PATCH"],
+      params: {
+        required: [
+          {
+            value: "@process_id",
+            format: "<__>",
+            sample: `FP0${randomizeLineId()}`,
+          },
+        ],
+      },
+      desc: (
+        <div>
+          Responsible for streaming process parameters running/off, also able to
+          reboot and reset the line data.
+          <a href="/hardware/#devices" style={style_section_link}>
+            Machine &gt; Respool
+          </a>
+          .
+        </div>
+      ),
+      status: "live",
+      source: "",
+      tags: ["machine", "hardware", "route"],
+      request: (
+        <a
+          href={`enter_href_here`}
+          style={style_request_link}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        >
+          {sample_hostname_port}/api/machine/respool?RS01
+        </a>
+      ),
+      response: <div>Sample response goes here.</div>,
+    },
+    {
+      route: "/api/machine/aux/printer",
+      type: ["GET"],
+      params: {
+        required: [
+          {
+            value: "@process_id",
+            format: "???",
+            sample: `???`,
+          },
+        ],
+      },
+      desc: (
+        <div>
+          Responsible for streaming process parameters running/off, also able to
+          reboot and reset the line data.
+          <a href="/hardware/#devices" style={style_section_link}>
+            Machine &gt; Printer
+          </a>
+          .
+        </div>
+      ),
+      status: "live",
+      source: "",
+      tags: ["machine", "hardware", "packaging", "printer", "route"],
+      request: (
+        <a
+          href={`enter_href_here`}
+          style={style_request_link}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        >
+          {sample_hostname_port}/api/machine/aux/printer?pid=???
+        </a>
+      ),
+      response: <div>Sample response goes here.</div>,
+    },
+    {
+      route: "/api/network",
+      type: ["GET"],
+      params: {
+        required: [
+          {
+            value: "@process_id",
+            format: "???",
+            sample: `???`,
+          },
+        ],
+      },
+      desc: (
+        <div>
+          Responsible for streaming process parameters running/off, also able to
+          reboot and reset the line data.
+          <a href="/hardware/#devices" style={style_section_link}>
+            Machine &gt; Printer
+          </a>
+          .
+        </div>
+      ),
+      status: "live",
+      source: "",
+      tags: ["machine", "hardware", "packaging", "printer", "route"],
+      request: (
+        <a
+          href={`enter_href_here`}
+          style={style_request_link}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        >
+          {sample_hostname_port}/api/machine/aux/printer?pid=???
+        </a>
+      ),
+      response: <div>Sample response goes here.</div>,
+    },
+    {
+      route: "/api/alert",
+      type: ["GET", "PUT"],
+      params: {
+        required: [
+          {
+            value: "@process_id",
+            format: "???",
+            sample: `???`,
+          },
+        ],
+      },
+      desc: (
+        <div>
+          Responsible for streaming process parameters running/off, also able to
+          reboot and reset the line data.
+          <a href="/hardware/#devices" style={style_section_link}>
+            Machine &gt; Printer
+          </a>
+          .
+        </div>
+      ),
+      status: "live",
+      source: "",
+      tags: ["machine", "hardware", "packaging", "printer", "route"],
+      request: (
+        <a
+          href={`enter_href_here`}
+          style={style_request_link}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        >
+          {sample_hostname_port}/api/machine/aux/printer?pid=???
+        </a>
+      ),
+      response: <div>Sample response goes here.</div>,
+    },
+    {
+      route: "/api/alert/active",
+      type: ["GET", "PUT"],
+      params: {
+        required: [
+          {
+            value: "@process_id",
+            format: "???",
+            sample: `???`,
+          },
+        ],
+      },
+      desc: (
+        <div>
+          Responsible for streaming process parameters running/off, also able to
+          reboot and reset the line data.
+          <a href="/hardware/#devices" style={style_section_link}>
+            Machine &gt; Printer
+          </a>
+          .
+        </div>
+      ),
+      status: "live",
+      source: "",
+      tags: ["machine", "hardware", "packaging", "printer", "route"],
+      request: (
+        <a
+          href={`enter_href_here`}
+          style={style_request_link}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        >
+          {sample_hostname_port}/api/machine/aux/printer?pid=???
+        </a>
+      ),
+      response: <div>Sample response goes here.</div>,
     },
   ];
 
@@ -751,62 +1182,61 @@ function Documentation() {
     <div
       className="documentation-root"
       style={{
-        backgroundColor: `${backgroundColor_set[selectedBackgroundIndex]}`,
-        color: `${color_set[selectedBackgroundIndex]}`,
+        backgroundColor: `${backgroundColor_set[props.mode]}`,
+        color: `${color_set[props.mode]}`,
         ...style_documentation_root,
         ...style_content,
       }}
     >
-      <button
+      {/* <button
         style={{ float: "right", ...style_button_mode }}
         onClick={() =>
           setSelectedBackgroundIndex(
-            selectedBackgroundIndex < backgroundColor_set.length
-              ? selectedBackgroundIndex + 1
+            props.mode < backgroundColor_set.length
+              ? props.mode + 1
               : 0
           )
         }
       >
         toggle
-      </button>
-      <div className="" style={{ fontSize: "1.5rem" }}>
-        <pre className="" style={{ textWrap: "wrap" }}>
-          The following routes are used to track production metrics. To use
-          append the endpoint to hostname:port and supply the necessary
-          arguments to pull the desired data. None of the routes are rate
-          limited, but be conscious as each request might fetch live data.
-        </pre>
-        <pre className="" style={{ textWrap: "wrap" }}>
-          The routes marked with * are routes that are not used on any pages but
-          are available to pull desired data. Select one the filters below to
-          display routes with those properties.
-          {/* <div
-            className=""
-            style={{
-              whiteSpace: "pre-wrap",
-              lineHeight: "1.5",
-              margin: "2rem 0rem",
+      </button> */}
+      <div className="" style={{ width: "70%" }}>
+        <div className="" style={{ fontSize: "1.25rem" }}>
+          <pre className="" style={{ textWrap: "wrap" }}>
+            The following routes are used to track production metrics. To use
+            append the endpoint to hostname:port and supply the necessary
+            arguments to pull the desired data. None of the routes are rate
+            limited, but be conscious as each request might fetch live data.
+          </pre>
+          <pre className="" style={{ textWrap: "wrap" }}>
+            The routes marked with * are routes that are not used on any pages
+            but are available to pull desired data. Select one the filters below
+            to display routes with those properties.
 
-              fontSize: "1rem",
-            }}
-          >
-            1. <b>Base URL</b>: Start with the base hostname and port (e.g.,{" "}
-            <code>http://hostname:port</code>).
-            <br />
-            2. <b>Append Endpoint</b>: Add the desired route's endpoint to the
-            base URL.
-            <br />
-            Example: <code>http://hostname:port/api/your-endpoint</code>
-            <br />
-            3. <b>Supply Parameters</b>: Pass the required arguments as query
-            parameters in the URL to pull the desired data.
-            <br />
-            Example:{" "}
-            <code>
-              http://hostname:port/api/your-endpoint?arg1=value1&arg2=value2
-            </code>
-          </div> */}
-        </pre>
+          </pre>
+          <div style={style_modify_response.label} onClick={() => setHowTo(howTo ? false : true)}>more</div>
+          {howTo && <pre
+              className=""
+              style={{
+                whiteSpace: "pre-wrap",
+                lineHeight: "1.75",
+                margin: "1.5rem",
+                fontSize: "1.125rem",
+              }}
+            >
+              1. <b>Base URL</b>: Start with the base hostname and port (e.g.,{" "}
+              <code>{sample_hostname_port}</code>).
+              <br />
+              2. <b>Append Endpoint</b>: Add the desired route's endpoint to the
+              base URL.
+              <br />
+              Example: <code>{sample_hostname_port}/api/your-endpoint</code>
+              <br />
+              3. <b>Supply Parameters</b>: Pass the required arguments as query
+              parameters in the URL to pull the desired data.
+              <br />
+            </pre>}
+        </div>
       </div>
       <div
         style={{
@@ -817,22 +1247,6 @@ function Documentation() {
           fontSize: "1.25rem",
         }}
       >
-                <div
-          className=""
-          contentEditable
-          style={{
-            ...style_button_mode,
-            fontWeight: 200,
-            letterSpacing: "1px",
-            width: "150px",
-            backgroundColor: selectedBackgroundIndex ? "#f4f4f4" : "#111111",
-            color: selectedBackgroundIndex ? "#000000" : "#ffffff72",
-            cursor: "pointer",
-            userSelect: "none",
-          }}
-        >
-          search...
-        </div>
         {[
           "extrusion",
           "fiber",
@@ -851,10 +1265,10 @@ function Documentation() {
               backgroundColor:
                 activeTag === tag
                   ? "#b8b8b8ff"
-                  : selectedBackgroundIndex
+                  : props.mode
                   ? "#f4f4f4"
                   : "#111111",
-              color: selectedBackgroundIndex
+              color: props.mode
                 ? "#333333"
                 : activeTag === tag
                 ? "#000000"
@@ -921,7 +1335,7 @@ function Documentation() {
                           style={style_table.row}
                           onMouseEnter={(e) =>
                             (e.currentTarget.style.backgroundColor =
-                              selectedBackgroundIndex
+                              props.mode
                                 ? "#f1f1f1"
                                 : "rgba(17, 17, 17, 0.682)")
                           }

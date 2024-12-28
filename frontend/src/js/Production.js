@@ -388,7 +388,7 @@ function Production() {
           </div>
         </div>
 
-        <div className="compounding-root">
+        <div className="compounding-root" id="compounded_lots">
           <div
             className="page-name"
             style={{ fontSize: "2.7rem", fontWeight: 400, paddingBottom: "3rem", paddingTop: "8rem" }}
