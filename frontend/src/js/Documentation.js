@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from "react";
 import moment from "moment";
+import * as sr from "./samples.js";
+import "../css/App.css";
+
 
 const sample_hostname_port = "http://localhost:5000";
 const sample_start_date = moment();
@@ -7,36 +10,7 @@ const sample_end_date = moment().add(1, "days");
 
 const sample_formatted_start_date = sample_start_date.format("YYYY-MM-DD");
 const sample_formatted_end_date = sample_end_date.format("YYYY-MM-DD");
-const sample_formatted_line_id = "EX03";
-
-const sample_response = `[["", "Week #", "", "EX00", "EX01", "EX03", "EX04", "Compounding", "Fiber", "Other"],
-                ["", "44", "Monday", "", "", "", "", "", "", ""], ["", "", "Tuesday", "", "", "", "", "", "", ""],
-                ["", "", "Wednesday", "", "", "", "", "", "", ""], ["", "", "Thursday", "", "", "", "", "", "", ""],
-                ["1", "", "Friday ", "", "", "ONYX XL", "ONYX", "", "CFU 2CFA 12CAR 4KEV HST 5FIB", ""],
-                ["", "", "", "EX00", "EX01", "EX03", "EX04", "Compounding", "Fiber", "Other"],
-                ["4", "45", "Monday", "17-4v2", "", "ONYX", "ONYX", "", "CFU 2CFA 12CAR 4KEV HST 5FIB", ""],
-                ["5", "", "Tuesday", "17-4v2", "", "ONYX", "ONYX", "", "CFU 2CFA 12CAR 4KEV HST 5FIB", ""],
-                ["6", "", "Wednesday", "17-4v2", "", "ONYX", "ONYX", "", "CFU 2CFA 12CAR 4KEV HST 5FIB", ""],
-                ["7", "", "Thursday", "17-4v2", "", "ONYX", "ONYX", "", "CFU 2CFA 12CAR 4KEV HST 5FIB", ""],
-                ["8", "", "Friday ", "17-4v2", "", "ONYX", "ONYX", "", "CFU 2CFA 12CAR 4KEV HST 5FIB", ""],
-                ["", "", "", "EX00", "EX01", "EX03", "EX04", "Compounding", "Fiber", "Other"],
-                ["11", "46", "Monday", "", "", "", "", "", "", ""],
-                ["12", "", "Tuesday", "", "", "ONYX", "ONYX", "17-4v2?", "CFU 2CFA 12CAR 4KEV HST 5FIB", ""],
-                ["13", "", "Wednesday", "", "ONYX FR", "ONYX", "ONYX", "17-4v2?", "CFU 2CFA 12CAR 4KEV HST 5FIB", ""],
-                ["14", "", "Thursday", "", "ONYX FR", "ONYX", "ONYX", "17-4v2?", "CFU 2CFA 12CAR 4KEV HST 5FIB", ""],
-                ["15", "", "Friday", "", "ONYX FR", "ONYX", "ONYX", "17-4v2?", "CFU 2CFA 12CAR 4KEV HST 5FIB", ""],
-                ["", "", "", "EX00", "EX01", "EX03", "EX04", "Compounding", "Fiber", "Other"],
-                ["18", "47", "Monday", "ESDv2", "", "ONYX", "ONYX", "17-4v2?", "CFU 2CFA 12CAR 4KEV HST 5FIB", ""],
-                ["19", "", "Tuesday ", "ESDv2", "", "ONYX", "ONYX", "17-4v2?", "CFU 2CFA 12CAR 4KEV HST 5FIB", ""],
-                ["20", "", "Wednesday", "ESDv2", "", "ONYX", "ONYX", "17-4v2?", "CFU 2CFA 12CAR 4KEV HST 5FIB", ""],
-                ["21", "", "Thursday", "ESDv2", "", "ONYX", "ONYX", "17-4v2?", "CFU 2CFA 12CAR 4KEV HST 5FIB", ""],
-                ["22", "", "Friday", "ESDv2", "", "ONYX", "ONYX", "17-4v2?", "CFU 2CFA 12CAR 4KEV HST 5FIB", ""],
-                ["", "", "", "EX00", "EX01", "EX03", "EX04", "Compounding", "Fiber", "Other"],
-                ["25", "48", "Monday", "", "", "ONYX", "ONYX", "", "CFU 2CFA 12CAR 4KEV HST 5FIB", ""],
-                ["26", "", "Tuesday ", "", "", "ONYX", "ONYX", "", "CFU 2CFA 12CAR 4KEV HST 5FIB", ""],
-                ["27", "", "Wednesday", "", "", "ONYX", "ONYX", "", "CFU 2CFA 12CAR 4KEV HST 5FIB", ""],
-                ["28", "", "Thursday", "", "", "", "", "", "", ""],
-                ["29", "", "Friday", "", "", "", "", "", "", ""]]"`;
+const sample_line_id = "EX03";
 
 let backgroundColor_set = ["#000000", "#FFFFFF"];
 let color_set = ["#dedede", "#000000"];
@@ -50,7 +24,7 @@ const theme_style_documentation = {
 
 function Documentation(props) {
   const [isHovered, setIsHovered] = useState(false);
-//   const [props.mode, setSelectedBackgroundIndex] = useState(0);
+  //   const [props.mode, setSelectedBackgroundIndex] = useState(0);
   const [rowsModified, setRowsModified] = useState(30);
   const [freshFetch, setFreshFetch] = useState(null);
   const [error, setError] = useState(null);
@@ -339,19 +313,17 @@ function Documentation(props) {
       },
       response: {
         height: "90%",
+        fontSize: "1rem",
         lineHeight: "1.25rem",
         marginBottom: "0.25rem",
+        maxHeight: "30rem",
         borderRadius: "0.25rem",
-        backgroundColor: props.mode
-          ? "rgb(244, 244, 244)"
-          : "#111111ae",
+        backgroundColor: props.mode ? "rgb(244, 244, 244)" : "#111111ae",
         overflow: "scroll",
         padding: "1rem",
         textDecoration: "none",
         color: props.mode ? "#111111" : "#bdbdbd",
-        border: `1px solid ${
-          props.mode ? "#dddddd" : "#2929298a"
-        }`,
+        border: `1px solid ${props.mode ? "#dddddd" : "#2929298a"}`,
       },
     },
   };
@@ -379,7 +351,9 @@ function Documentation(props) {
         </a>
       ),
       response: (
-        <div className="">"message": "Successfully connected to database"</div>
+        <pre>
+          {`${JSON.stringify(sr.api_load, null, 4)}`}
+        </pre>
       ),
     },
     // production routes
@@ -426,7 +400,12 @@ function Documentation(props) {
           &end_date={sample_formatted_end_date}
         </a>
       ),
-      response: sample_response,
+      response: (
+        <pre>{`${JSON.stringify(
+          sr.api_current,
+          null,
+          4)}`}</pre>
+      ),
     },
     {
       route: "/api/current/fiber",
@@ -472,20 +451,13 @@ function Documentation(props) {
         </a>
       ),
 
-      response:
-        JSON.stringify(`Spool ID,Count,Start Time,Weeknum,FiberLine,Material,Run Length (m),Run Time (mins),Finish Time,Good Meters Unpadded Yield,Good Meters Unpadded Count,Pad the Bad Sections Yield,Pad the Bad Sections Count,Remove Too Short or Bad Yield,Remove Too Short or Bad Count,Good Meters Incl. GP Yield,Good Meters Incl. GP Count,respooled yield,Binned Respooled Count,Binned Respooled Yield,respooled count,50cc eq. Produced,150ccs Produced,Respooled 150 Count,150cc Yield,Spooling Instructions,XY_mean_good,XY_std_good,XY_mean_all,XY_std_all,XX_mean_good,XX_std_good,XX_mean_all,XX_std_all,YY_mean_good,YY_std_good,YY_mean_all,YY_std_all,minarea1m_loss,maxarea1m_loss,x_minareasingleaxis1m_loss,x_maxareasingleaxis1m_loss,y_minareasingleaxis1m_loss,y_maxareasingleaxis1m_loss,minarea20m_loss,maxarea20m_loss,qcstatus
-        FP05_FIB_241101_2102,1,2024-11-01 21:02:00,44,FP05,FIB,95,23.75,2024-11-01 21:25:45,0.9578947368421052,91,0.6526315789473685,62,0.010526315789473684,1,0.010526315789473684,1,0.0,0.0,0.0,0,0,0,0,0.0,"[_] RP 94m
-        ",nan,nan,0.0907031368421053,0.0023046220268272606,nan,nan,0.08594375789473684,0.009877371547570409,nan,nan,0.09784749473684207,0.009154813927079347,0.010869565217391304,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0
-        FP10_CAR_241028_0831,1,2024-10-28 08:31:00,44,FP10,CAR,6505,2168.333333333333,2024-10-29 20:39:20,0.9884704073789393,6430,0.945119139123751,6148,0.8645657186779401,5624,0.8178324365872406,5320,0.7541890853189854,4000.0,0.7,4906,11,3,4014,0.6170637970791699,"[_] RS 1
-        [_] RP 151m
-        [_] GS 1
-        [_] RP 268m
-        [_] GP 413m
-        [_] RP 244m
-        [_][_][_][_] GS 4/10
-        [_][_][_][_] GS 4/10
-        [_][_] GS 2/10
-        [_] RP 76m`),
+      response: (
+        <pre>{`${JSON.stringify(
+          sr.api_current_fiber,
+          null,
+          4
+        )}`}</pre>
+      ),
     },
     {
       route: "/api/current/compounding",
@@ -533,20 +505,11 @@ function Documentation(props) {
         </a>
       ),
 
-      response:
-        JSON.stringify(`Spool ID,Count,Start Time,Weeknum,FiberLine,Material,Run Length (m),Run Time (mins),Finish Time,Good Meters Unpadded Yield,Good Meters Unpadded Count,Pad the Bad Sections Yield,Pad the Bad Sections Count,Remove Too Short or Bad Yield,Remove Too Short or Bad Count,Good Meters Incl. GP Yield,Good Meters Incl. GP Count,respooled yield,Binned Respooled Count,Binned Respooled Yield,respooled count,50cc eq. Produced,150ccs Produced,Respooled 150 Count,150cc Yield,Spooling Instructions,XY_mean_good,XY_std_good,XY_mean_all,XY_std_all,XX_mean_good,XX_std_good,XX_mean_all,XX_std_all,YY_mean_good,YY_std_good,YY_mean_all,YY_std_all,minarea1m_loss,maxarea1m_loss,x_minareasingleaxis1m_loss,x_maxareasingleaxis1m_loss,y_minareasingleaxis1m_loss,y_maxareasingleaxis1m_loss,minarea20m_loss,maxarea20m_loss,qcstatus
-          FP05_FIB_241101_2102,1,2024-11-01 21:02:00,44,FP05,FIB,95,23.75,2024-11-01 21:25:45,0.9578947368421052,91,0.6526315789473685,62,0.010526315789473684,1,0.010526315789473684,1,0.0,0.0,0.0,0,0,0,0,0.0,"[_] RP 94m
-          ",nan,nan,0.0907031368421053,0.0023046220268272606,nan,nan,0.08594375789473684,0.009877371547570409,nan,nan,0.09784749473684207,0.009154813927079347,0.010869565217391304,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0
-          FP10_CAR_241028_0831,1,2024-10-28 08:31:00,44,FP10,CAR,6505,2168.333333333333,2024-10-29 20:39:20,0.9884704073789393,6430,0.945119139123751,6148,0.8645657186779401,5624,0.8178324365872406,5320,0.7541890853189854,4000.0,0.7,4906,11,3,4014,0.6170637970791699,"[_] RS 1
-          [_] RP 151m
-          [_] GS 1
-          [_] RP 268m
-          [_] GP 413m
-          [_] RP 244m
-          [_][_][_][_] GS 4/10
-          [_][_][_][_] GS 4/10
-          [_][_] GS 2/10
-          [_] RP 76m`),
+      response: (
+        <pre>
+          {`${JSON.stringify(sr.api_load, null, 4)}`}
+        </pre>
+      ),
     },
     //extrusion routes
     {
@@ -590,18 +553,22 @@ function Documentation(props) {
       tags: ["extrusion", "stream", "route"],
       request: (
         <a
-          href={`http://localhost:5000/api/extruder?line_id=$EX03&start_date=${sample_formatted_start_date}&end_date=${sample_formatted_end_date}`}
+          href={`http://localhost:5000/api/extruder?line_id=${sample_line_id}&start_date=${sample_formatted_start_date}&end_date=${sample_formatted_end_date}`}
           style={style_request_link}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
-          {sample_hostname_port}/api/extruder?line_id=$EX03&start_date=
+          {sample_hostname_port}/api/extruder?line_id={sample_line_id}&start_date=
           {sample_formatted_start_date}
           &end_date={sample_formatted_end_date}
         </a>
       ),
 
-      response: sample_response,
+      response: (
+        <pre>
+          {`${JSON.stringify(sr.api_extruder, null, 4)}`}
+        </pre>
+      ),
     },
     {
       route: "/api/extruder/live",
@@ -632,18 +599,20 @@ function Documentation(props) {
       tags: ["extrusion", "stream", "route"],
       request: (
         <a
-          href={`http://localhost:5000/api/extruder/live?line_id=$EX03&spool_count=3`}
+          href={`http://localhost:5000/api/extruder/live?line_id=${sample_line_id}&spool_count=3`}
           style={style_request_link}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
-          {sample_hostname_port}/api/extruder/live?line_id=$EX03&start_date=
+          {sample_hostname_port}/api/extruder/live?line_id={sample_line_id}&start_date=
           {sample_formatted_start_date}
           &end_date={sample_formatted_end_date}
         </a>
       ),
 
-      response: sample_response,
+      response:         (<pre>
+      {`${JSON.stringify(sr.api_extruder_live, null, 4)}`}
+    </pre>),
     },
     // scheduling routes
     {
@@ -678,17 +647,11 @@ function Documentation(props) {
         </a>
       ),
 
-      response: JSON.stringify({
-        signature: "2024-08",
-        materials: ["ONX", "D2V2", "OXL", "ONX", "CPP"],
-        goals: {
-          ONX: 1000,
-          D2V2: 1000,
-          OXL: 6000,
-          ONX: 1000,
-          CPP: 1000,
-        },
-      }),
+      response: (
+        <pre>
+          {`${JSON.stringify(sr.api_schedule_existing, null, 4)}`}
+        </pre>
+      ),
     },
     {
       route: "/api/schedule/redo",
@@ -757,12 +720,9 @@ function Documentation(props) {
       ),
 
       response: (
-        <>
-          <div>Data submitted sucessfully.</div>{" "}
-          <div onClick={randomizeNumber} style={{ cursor: "pointer" }}>
-            {rowsModified} rows modified. (Click to randomize)
-          </div>
-        </>
+        <pre>
+          {`${JSON.stringify(sr.api_schedule_existing, null, 4)}`}
+        </pre>
       ),
     },
     // hardware routes
@@ -791,7 +751,11 @@ function Documentation(props) {
           {sample_hostname_port}/api/hardware/
         </a>
       ),
-      response: <div>Sample response goes here.</div>,
+      response: (
+        <pre>
+          {`${JSON.stringify(sr.api_wip, null, 4)}`}
+        </pre>
+      ),
     },
     {
       route: "/api/hardware/beaglebone",
@@ -939,10 +903,14 @@ function Documentation(props) {
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
-          {sample_hostname_port}/api/machine/extruder?{sample_formatted_line_id}
+          {sample_hostname_port}/api/machine/extruder?{sample_line_id}
         </a>
       ),
-      response: <div>Sample response goes here.</div>,
+      response: (
+        <pre>
+          {`${JSON.stringify(sr.api_wip, null, 4)}`}
+        </pre>
+      ),
     },
     {
       route: "/api/machine/fiber",
@@ -976,10 +944,14 @@ function Documentation(props) {
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
-          {sample_hostname_port}/api/machine/extruder?{sample_formatted_line_id}
+          {sample_hostname_port}/api/machine/extruder?{sample_line_id}
         </a>
       ),
-      response: <div>Sample response goes here.</div>,
+      response: (
+        <pre>
+          {`${JSON.stringify(sr.api_wip, null, 4)}`}
+        </pre>
+      ),
     },
     {
       route: "/api/machine/respool",
@@ -1016,7 +988,11 @@ function Documentation(props) {
           {sample_hostname_port}/api/machine/respool?RS01
         </a>
       ),
-      response: <div>Sample response goes here.</div>,
+      response: (
+        <pre>
+          {`${JSON.stringify(sr.api_wip, null, 4)}`}
+        </pre>
+      ),
     },
     {
       route: "/api/machine/aux/printer",
@@ -1053,7 +1029,11 @@ function Documentation(props) {
           {sample_hostname_port}/api/machine/aux/printer?pid=???
         </a>
       ),
-      response: <div>Sample response goes here.</div>,
+      response: (
+        <pre>
+          {`${JSON.stringify(sr.api_wip, null, 4)}`}
+        </pre>
+      ),
     },
     {
       route: "/api/network",
@@ -1090,7 +1070,11 @@ function Documentation(props) {
           {sample_hostname_port}/api/machine/aux/printer?pid=???
         </a>
       ),
-      response: <div>Sample response goes here.</div>,
+      response: (
+        <pre>
+          {`${JSON.stringify(sr.api_wip, null, 4)}`}
+        </pre>
+      ),
     },
     {
       route: "/api/alert",
@@ -1127,7 +1111,11 @@ function Documentation(props) {
           {sample_hostname_port}/api/machine/aux/printer?pid=???
         </a>
       ),
-      response: <div>Sample response goes here.</div>,
+      response: (
+        <pre>
+          {`${JSON.stringify(sr.api_wip, null, 4)}`}
+        </pre>
+      ),
     },
     {
       route: "/api/alert/active",
@@ -1164,7 +1152,11 @@ function Documentation(props) {
           {sample_hostname_port}/api/machine/aux/printer?pid=???
         </a>
       ),
-      response: <div>Sample response goes here.</div>,
+      response: (
+        <pre>
+          {`${JSON.stringify(sr.api_wip, null, 4)}`}
+        </pre>
+      ),
     },
   ];
 
@@ -1200,7 +1192,7 @@ function Documentation(props) {
       >
         toggle
       </button> */}
-      <div className="" style={{ width: "70%" }}>
+      {/* <div className="" style={{ width: "70%", border: "1px solid green" }}>
         <div className="" style={{ fontSize: "1.25rem" }}>
           <pre className="" style={{ textWrap: "wrap" }}>
             The following routes are used to track production metrics. To use
@@ -1212,10 +1204,15 @@ function Documentation(props) {
             The routes marked with * are routes that are not used on any pages
             but are available to pull desired data. Select one the filters below
             to display routes with those properties.
-
           </pre>
-          <div style={style_modify_response.label} onClick={() => setHowTo(howTo ? false : true)}>more</div>
-          {howTo && <pre
+          <div
+            style={style_modify_response.label}
+            onClick={() => setHowTo(howTo ? false : true)}
+          >
+            more
+          </div>
+          {howTo && (
+            <pre
               className=""
               style={{
                 whiteSpace: "pre-wrap",
@@ -1235,16 +1232,16 @@ function Documentation(props) {
               3. <b>Supply Parameters</b>: Pass the required arguments as query
               parameters in the URL to pull the desired data.
               <br />
-            </pre>}
+            </pre>
+          )}
         </div>
-      </div>
+      </div> */}
       <div
         style={{
           display: "flex",
           gap: "0.5rem",
           marginBottom: "2rem",
-          marginTop: "2rem",
-          fontSize: "1.25rem",
+          fontSize: "1.05rem"
         }}
       >
         {[
@@ -1281,7 +1278,6 @@ function Documentation(props) {
           </div>
         ))}
       </div>
-      {/* <pre>{JSON.stringify(routeDetails, null, 2)}</pre> */}
       {routeDetails
         .filter((route) => route.tags.includes(activeTag))
         .map((route, i) => (
@@ -1334,10 +1330,9 @@ function Documentation(props) {
                           key={index}
                           style={style_table.row}
                           onMouseEnter={(e) =>
-                            (e.currentTarget.style.backgroundColor =
-                              props.mode
-                                ? "#f1f1f1"
-                                : "rgba(17, 17, 17, 0.682)")
+                            (e.currentTarget.style.backgroundColor = props.mode
+                              ? "#f1f1f1"
+                              : "rgba(17, 17, 17, 0.682)")
                           }
                           onMouseLeave={(e) =>
                             (e.currentTarget.style.backgroundColor =
@@ -1378,18 +1373,18 @@ function Documentation(props) {
                         style={style_modify_response.label}
                         onClick={() => {
                           setLoading(true);
-                          handleHit("http://localhost:5000/test");
+                          handleHit("http://localhost:5000/api/ping");
                         }}
                       >
                         hit
                       </div>
-                      <div
+                      {/* <div
                         style={style_modify_response.label}
                         onClick={() => handleCopy(route.request)}
                       >
                         copy
-                      </div>
-                      <div style={style_modify_response.label}>edit</div>
+                      </div> */}
+                      {/* <div style={style_modify_response.label}>edit</div> */}
                     </div>
                   </div>
                   <div style={{ flexBasis: "75%" }}>
@@ -1410,24 +1405,24 @@ function Documentation(props) {
                       </div>
                     )}
                     <div style={style_modify_response}>
-                      <div
+                      {/* <div
                         style={style_modify_response.label}
                         onClick={() => handleCopy(route.request)}
                       >
                         copy
-                      </div>
-                      <div
+                      </div> */}
+                      {/* <div
                         style={style_modify_response.label}
                         onClick={() => handlePrettify(route.request)}
                       >
                         pretty
-                      </div>
-                      <div
+                      </div> */}
+                      {/* <div
                         style={style_modify_response.label}
                         onClick={() => handleSave(route.response, route.route)}
                       >
                         save
-                      </div>
+                      </div> */}
                     </div>
                   </div>
                 </>

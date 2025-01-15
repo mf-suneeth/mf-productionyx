@@ -1,9 +1,4 @@
 import React, { useState, useEffect } from "react";
-import {
-  style_content, style_extruder_title, style_spool_box_wrapper, style_oven_spool_box_grid, style_spool_box, style_live_spool_box, style_oven_spool_box,
-  style_oven_box_grid, style_oven_box, style_oven_box_inner, style_tooltip, style_failure_mode_set, style_button_mode,
-  style_button_x, style_table, style_table_header_row, style_table_header_data, style_error_box,
-} from "./styles.js";
 
 const style_step = {
   flexBasis: "49%",
@@ -47,60 +42,12 @@ const style_category_dialog = {
   fontSize: "0.75rem",
   fontWeight: 300,
   padding: "1rem",
-  border: "1px solid #DDDDDD",
+  border: "1px solid #dddddd66",
   borderRadius: "0.75rem",
   backgroundColor: "#fff",
-  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+  boxShadow: "0 4px 12px rgba(9, 7, 7, 0.05)",
   overflow: "hidder"
 }
-
-
-const style_input = {
-  width: "100%",
-  padding: "0.8rem",
-  borderRadius: "0.5rem",
-  border: "1px solid #ddd",
-  fontSize: "1rem",
-  boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-};
-
-const style_button = {
-  padding: "0.75rem 1.5rem",
-  border: "none",
-  backgroundColor: "#4CAF50",
-  color: "white",
-  fontSize: "1rem",
-  borderRadius: "0.5rem",
-  cursor: "pointer",
-  transition: "background-color 0.3s ease",
-};
-
-const style_button_disabled = {
-  ...style_button,
-  backgroundColor: "#ccc",
-  cursor: "not-allowed",
-};
-
-const style_table_header = {
-  backgroundColor: "#4CAF50",
-  color: "#fff",
-  padding: "12px 15px",
-  textAlign: "left",
-  fontWeight: "bold",
-};
-
-const style_table_row = {
-  padding: "12px 15px",
-  border: "1px solid #ddd",
-  textAlign: "left",
-  fontSize: "1rem",
-};
-
-const style_table_row_hover = {
-  ...style_table_row,
-  backgroundColor: "#f2f2f2",
-  cursor: "pointer",
-};
 
 const materialsDict = {
   ONYX: { code: "ONX", color: "#1F1F1F", hex: "1F1F1F", desc: "800cc Onyx" },
@@ -127,6 +74,7 @@ const materialsDict = {
   "D2V2 STG2": { code: "DS2", desc: "D2 v2 extrusion compounding" },
   "316L": { code: "316", desc: "316L stainless steel production" },
   "316L STG2": { code: "3S2", desc: "316L stainless steel extrusion compounding" },
+  "AO1": { code: "A01", desc: "Ceramic Release" },
 
   // Utility Stamps
   CLN: { code: "CLN", desc: "Shift used for deep clean of work cell" },
@@ -342,7 +290,7 @@ function Schedule() {
 
   return (
     <div className="component-wrapper" style={{ padding: "4rem 5vw", backgroundColor: "#FFF",  height: "100%", flex: 1}}>
-      <div className="" style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "2rem", flexDirection: "row" }}>
+      <div className="" style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "2.5rem", flexDirection: "row" }}>
         <div className="enter-date" style={style_category_dialog}>
           <div className="tab-header" style={style_tab_header}>
             <div style={style_tab_header_idx}>1</div>
@@ -350,7 +298,7 @@ function Schedule() {
           </div>
           <div className="tab-body" style={style_tab_body}>
             <form>
-              <input id="monthYear" type="month" value={selectedDate} onChange={handleChange} placeholder="Select a month and year" style={{ width: "100%", padding: "1rem", fontSize: "1.5rem", border: "1px solid #DDDDDD", borderRadius: "0.5rem", height: "3rem", transition: "border-color 0.3s, box-shadow 0.3s" }} onFocus={(e) => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 5px rgba(59, 130, 246, 0.3)"; e.target.style.outline = "none"; }} onBlur={(e) => { e.target.style.borderColor = "#DDDDDD"; e.target.style.boxShadow = "none"; e.target.style.outline = "none"; }} />
+              <input id="monthYear" type="month" value={selectedDate} onChange={handleChange} placeholder="Select a month and year" style={{ width: "100%", padding: "1rem", fontSize: "1.25rem", border: "1px solid #DDDDDD", borderRadius: "0.5rem", height: "3rem", transition: "border-color 0.3s, box-shadow 0.3s" }} onFocus={(e) => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 5px rgba(59, 130, 246, 0.3)"; e.target.style.outline = "none"; }} onBlur={(e) => { e.target.style.borderColor = "#DDDDDD"; e.target.style.boxShadow = "none"; e.target.style.outline = "none"; }} />
             </form>
             {existingMonths && existingMonths.data && (
               <div id="existing_months">
@@ -360,7 +308,7 @@ function Schedule() {
                       key={index}
                       style={{
                         padding: "0.25rem 0.75rem",
-                        backgroundColor: "#FFFFFF", borderRadius: "1rem", boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+                        backgroundColor: "#FFFFFF", borderRadius: "1rem", boxShadow: "0 4px 8px rgba(0, 0, 0, 0.05)",
                         fontWeight: "600", color: "#2D3748", display: "flex", flexDirection: "row",
                         cursor: "pointer", transition: "transform 0.3s, box-shadow 0.3s",
                         textAlign: "center", gap: "0.5rem", flexBasis: "5%", justifyContent: "space-between"
@@ -374,10 +322,10 @@ function Schedule() {
                         )
                       }
                     >
-                      <div style={{ fontSize: "0.75rem", color: "#3B82F6E2", fontWeight: "700", letterSpacing: "0.5px" }}>
+                      <div style={{ fontSize: "0.9rem", color: "#3B82F6E2", fontWeight: "700", letterSpacing: "0.5px" }}>
                         {existingMonths.data[month].month}
                       </div>
-                      <div style={{ fontSize: "0.75rem", fontWeight: "600", color: "#4A556880", letterSpacing: "0.5px" }}>
+                      <div style={{ fontSize: "0.9rem", fontWeight: "600", color: "#4A556880", letterSpacing: "0.5px" }}>
                         {existingMonths.data[month].year}
                       </div>
                     </div>
@@ -395,7 +343,7 @@ function Schedule() {
           </div>
           <div className="tab-body" style={style_tab_body}>
             <form id="submit" onSubmit={handleSubmit} style={{ flexGrow: 1 }}>
-              <textarea value={input || ""} onChange={handleInput} rows={1} placeholder="Paste month here..." style={{ width: "100%", padding: "0.75rem", fontSize: "0.75rem", border: "1px solid #DDDDDD", borderRadius: "0.5rem", resize: "none", overflow: "hidden", outline: "none", transition: "border-color 0.3s, box-shadow 0.3s" }} onFocus={(e) => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 5px rgba(59, 130, 246, 0.3)"; }} onBlur={(e) => { e.target.style.borderColor = "#DDDDDD"; e.target.style.boxShadow = "none"; }} ref={(textarea) => { if (textarea) { textarea.style.height = "100%"; textarea.style.height = `${textarea.scrollHeight}px`; } }} />
+              <textarea value={input || ""} onChange={handleInput} rows={1} placeholder="Paste month here..." style={{ width: "100%", padding: "0.75rem", fontSize: "0.9rem", border: "1px solid #DDDDDD", borderRadius: "0.5rem", resize: "none", overflow: "hidden", outline: "none", transition: "border-color 0.3s, box-shadow 0.3s" }} onFocus={(e) => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 5px rgba(59, 130, 246, 0.3)"; }} onBlur={(e) => { e.target.style.borderColor = "#DDDDDD"; e.target.style.boxShadow = "none"; }} ref={(textarea) => { if (textarea) { textarea.style.height = "100%"; textarea.style.height = `${textarea.scrollHeight}px`; } }} />
             </form>
           </div>
         </div>
@@ -406,9 +354,9 @@ function Schedule() {
           </div>
           <div className="tab-body" style={style_tab_body}>
             {(input && input.length > 1) ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                 {[input, parsedInput].map((data, tableIndex) => (
-                  <table key={tableIndex} style={{ width: "100%", borderCollapse: "collapse", backgroundColor: "#F9FAFB", borderRadius: "0.5rem", border: "1px solid #E5E7EB", overflow: "hidden", boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)", fontSize: "0.75rem" }}>
+                  <table key={tableIndex} style={{ width: "100%", borderCollapse: "collapse", backgroundColor: "#F9FAFB", borderRadius: "0.5rem", border: "none", overflow: "hidden", boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)", fontSize: "0.9rem" }}>
                     <thead>
                       <tr style={{ backgroundColor: "#3B82F6", color: "#FFF" }}>
 
@@ -446,21 +394,23 @@ function Schedule() {
             <div style={style_tab_header_label}>Update Goals</div>
           </div>
           <div className="tab-body" style={style_tab_body}>
-            {(extrusionGoals || fiberGoals || compoundingGoals) &&
-              [extrusionGoals, fiberGoals, compoundingGoals].map((goal, i) => goal ? (
-                <table key={i} className="goals-table" style={{ width: "100%", borderCollapse: "collapse", backgroundColor: "#F9FAFB", borderRadius: "0.5rem", border: "1px solid #E5E7EB", overflow: "hidden", boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)", fontSize: "0.75rem", tableLayout: "fixed" }}>
+          {(input && input.length > 1) ?
+            ((extrusionGoals || fiberGoals || compoundingGoals) &&
+              [extrusionGoals, fiberGoals, compoundingGoals].map((goal, i) => Object.keys(goal).length > 0 && (
+                <table key={i} className="goals-table" style={{ width: "100%", borderCollapse: "collapse", backgroundColor: "#F9FAFB", borderRadius: "0.5rem", border: "none", overflow: "hidden", boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)", fontSize: "0.9rem", tableLayout: "fixed" }}>
                   <colgroup>
                     <col style={{ width: "50%" }} />
                     <col style={{ width: "25%" }} />
                     <col style={{ width: "25%" }} />
                   </colgroup>
-                  <thead>
+
+                  {Object.keys(goal).length > 0 ? (<thead>
                     <tr style={{ backgroundColor: "#3B82F6", color: "#FFF", padding: "0rem" }}>
                       <th style={{ padding: "0.5rem", textAlign: "left", fontWeight: "600", fontSize: "0.875rem" }}>{["Extrusion", "Fiber", "Compounding"][i]}</th>
                       <th style={{ padding: "0.5rem", textAlign: "left", fontWeight: "600", fontSize: "0.875rem" }}>Shifts</th>
                       <th style={{ padding: "0.5rem", textAlign: "left", fontWeight: "600", fontSize: "0.875rem" }}>Goals</th>
                     </tr>
-                  </thead>
+                  </thead>) : (<div></div>)}
                   <tbody>
                     {Object.keys(goal).map((entry, j) => (
                       <tr key={j} style={{ backgroundColor: j % 2 === 0 ? "#FFFFFF" : "#F3F4F6", transition: "background-color 0.2s ease", cursor: "pointer" }} onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#E5E7EB")} onMouseOut={(e) => (e.currentTarget.style.backgroundColor = j % 2 === 0 ? "#FFFFFF" : "#F3F4F6")}>
@@ -483,7 +433,7 @@ function Schedule() {
                             type="number"
                             // value={}
                             onChange={(e) => handleGoalChange(e, entry)}
-                            style={{ width: "100%", padding: "0.25rem", border: "1px solid #E5E7EB", borderRadius: "0.25rem", fontSize: "0.75rem", backgroundColor: "#FFF" }}
+                            style={{ width: "100%", padding: "0.25rem", border: "1px solid #E5E7EB", borderRadius: "0.25rem", fontSize: "0.9rem", backgroundColor: "#FFF" }}
                             onFocus={(e) => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 5px rgba(59, 130, 246, 0.3)"; e.target.style.outline = "none"; }} 
                             onBlur={(e) => { e.target.style.borderColor = "#DDDDDD"; e.target.style.boxShadow = "none"; e.target.style.outline = "none"; }} 
                           />
@@ -492,7 +442,7 @@ function Schedule() {
                     ))}
                   </tbody>
                 </table>
-              ) : null)}
+              ))) : (<div className="prompt-text" style={{ border: "1px solid #EEEEFF", backgroundColor: "#EEEEEE", height: "100%", borderRadius: "0.5rem", textAlign: "center", alignContent: "center", fontSize: "1rem", fontWeight: 500, color: "#CCCCCC", padding: "1rem 0rem" }}>paste schedule to enter goals</div>)}
           </div>
         </div>
         <div className="update-submit" style={style_category_dialog}>
@@ -547,7 +497,6 @@ function Schedule() {
       </div>
     </div>
   );
-
 }
 
 export default Schedule;

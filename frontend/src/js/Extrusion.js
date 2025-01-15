@@ -751,7 +751,7 @@ function Extrusion() {
                                     ...style_spool_box, ...getBoxStyle(4),
                                 }}>
                                     <div style={{ ...style_oven_box_inner }}>
-                                        {60 - index}
+                                        {/* {60 - index} */}
                                     </div>
                                 </div>
                             ))
@@ -764,7 +764,7 @@ function Extrusion() {
                                 ...style_spool_box, ...getBoxStyle(5),
                             }}>
                                 <div style={{ ...style_oven_box_inner }}>
-                                    {data.projected - index}
+                                    {/* {data.projected - index} */}
                                 </div>
                             </div>
                         ))) : (

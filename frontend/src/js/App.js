@@ -10,6 +10,7 @@ import Documentation from "./Documentation";
 import Extrusion from "./Extrusion";
 import Overview from "./Overview";
 import Hardware from "./Hardware";
+import View from "./View";
 
 function App() {
   const [selectedBackgroundIndex, setSelectedBackgroundIndex] = useState(0);
@@ -72,6 +73,9 @@ function App() {
               <Link to="/extrusion">Extrusion</Link>
             </li>
             <li>
+              <Link to="/view">View</Link>
+            </li>
+            <li>
               <Link to="/hardware">Hardware</Link>
             </li>
             <li>
@@ -101,6 +105,7 @@ function App() {
           <Route path="/overview" element={<Overview />} />
           <Route path="/production" element={<Production />} />
           <Route path="/extrusion" element={<Extrusion />} />
+          <Route path="/view" element={<View />} />
           <Route
             path="/documentation"
             element={<Documentation mode={selectedBackgroundIndex} />}
