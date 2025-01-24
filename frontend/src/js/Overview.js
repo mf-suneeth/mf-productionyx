@@ -87,7 +87,7 @@ function Overview() {
     setLoading(true);
     setUptimeData(null);
     fetchData(
-      `http://localhost:5000/api/conversion/extruder?line_id=EX03&start_date=${startDate}&end_date=${endDate}&shift=1,2,3`,
+      `/api/conversion/extruder?line_id=EX03&start_date=${startDate}&end_date=${endDate}&shift=1,2,3`,
 
       (data) => {
         setUptimeData(data);
@@ -108,7 +108,7 @@ function Overview() {
   useEffect(() => {
     setLoading(true);
     fetchData(
-      `http://localhost:5000/api/metrics/extruder?start_date=${startDate}&end_date=${endDate}`,
+      `/api/metrics/extruder?start_date=${startDate}&end_date=${endDate}`,
       (data) => setMetricsData(data)
     );
   }, [startDate, endDate]);
@@ -116,7 +116,7 @@ function Overview() {
   useEffect(() => {
     setLoading(true);
     fetchData(
-      `http://localhost:5000/api/goals/extruder?start_date=${startDate}&end_date=${endDate}`,
+      `/api/goals/extruder?start_date=${startDate}&end_date=${endDate}`,
       (data) => setGoalsData(data)
     );
   }, [startDate, endDate]);
@@ -124,7 +124,7 @@ function Overview() {
   useEffect(() => {
     setLoading(true);
     fetchData(
-      `http://localhost:5000/api/schedule?start_date=${startDate}&end_date=${endDate}`,
+      `/api/schedule?start_date=${startDate}&end_date=${endDate}`,
       (data) => setScheduleData(data)
     );
   }, [startDate, endDate]);
