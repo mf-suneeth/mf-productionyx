@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import moment from "moment";
-import { materialColor, materialDict } from "./materials";
+import { materialColor, materialDict, lineColor } from "./materials";
 import LineTo from "react-lineto";
 
 import {
@@ -34,14 +34,21 @@ function Overview() {
   const [uptimeData, setUptimeData] = useState(null);
   const [metricsData, setMetricsData] = useState(null);
   const [goalsData, setGoalsData] = useState(null);
+  const [oeeData, setOeeData] = useState(null);
+
+
+  // fetched graphs
   const [graphData, setGraphData] = useState({ data: {}, options: {} });
+  const [oeeGraphData, setOeeGraphData] = useState({ data: {}, options: {} });
+
+
   const [scheduleData, setScheduleData] = useState({});
 
   // user opts
   const [startDate, setStartDate] = useState(moment().format("2025-01-01"));
-  const [endDate, setEndDate] = useState(moment().format("2025-01-08"));
+  const [endDate, setEndDate] = useState(moment().format("2025-01-30"));
   const [selectedMaterial, setSelectedMaterial] = useState({});
-  const [hoveredMaterial, setHoveredMaterial] = useState(null);
+  const [hoveredMaterial, setHoveredMaterial] = useState("ONX");
   const [selectedLineId, setSelectedLineId] = useState([]);
 
   // default styling
@@ -60,8 +67,9 @@ function Overview() {
     display: "grid",
     gridTemplateColumns: "42% 10% 42%",
     gridTemplateRows: "repeat(12, 1fr)",
-    gap: "3%",
-    height: "300vh",
+    columnGap: "3%",
+    rowGap: "3%",
+    height: "400vh",
     position: "relative",
   };
 
@@ -108,6 +116,14 @@ function Overview() {
   useEffect(() => {
     setLoading(true);
     fetchData(
+      `http://localhost:5000//api/metrics/oee`,
+      (data) => setOeeData(data)
+    );
+  }, []);
+
+  useEffect(() => {
+    setLoading(true);
+    fetchData(
       `http://localhost:5000/api/metrics/extruder?start_date=${startDate}&end_date=${endDate}`,
       (data) => setMetricsData(data)
     );
@@ -128,6 +144,95 @@ function Overview() {
       (data) => setScheduleData(data)
     );
   }, [startDate, endDate]);
+
+  useEffect(() => {
+    // Ensure oeeData is available before processing
+    if (oeeData && oeeData.data) {
+      const labels = [...new Set(oeeData?.data?.map((item) => item.month))]; // Extract unique months for X-axis
+      const lineIds = [...new Set(oeeData?.data?.map((item) => item.line_id))]; // Extract unique line IDs
+  
+      const datasets = lineIds.map((lineId) => {
+        const lineData = oeeData.data.filter((item) => item.line_id === lineId);
+  
+        return {
+          label: lineId, // Line ID as the dataset label
+          data: labels.map((month) => {
+            const monthData = lineData.find((item) => item.month === month);
+            return monthData ? parseFloat(monthData.oee_ratio) : null; // Use `oee_ratio` or null if missing
+          }),
+          borderColor: lineColor[lineId], // Line color
+          backgroundColor: lineColor[lineId] + "80", // Transparent background color
+          tension: 0.4, // Smooth curve
+          fill: false, // Line graph, no fill
+        };
+      });
+  
+      const data = {
+        labels, // Months as X-axis labels
+        datasets, // Datasets for each line
+      };
+  
+      const options = {
+        responsive: true,
+        // maintainAspectRatio: false,
+        scales: {
+          y: {
+            title: {
+              display: true,
+              text: "OEE Ratio", // Y-axis title
+              color: "#FFFFFF",
+            },
+            grid: {
+              color: "#FFFFFF0D", // Gridlines color
+            },
+            ticks: {
+              color: "#FFFFFFCC",
+              font: {
+                size: 16,
+              },
+            },
+          },
+          x: {
+            title: {
+              display: true,
+              // text: "Month", // X-axis title
+              color: "#FFFFFF",
+            },
+            grid: {
+              color: "#FFFFFF0D", // Gridlines color
+            },
+            ticks: {
+              color: "#FFFFFF80",
+              font: {
+                size: 16,
+              },
+            },
+          },
+        },
+        plugins: {
+          legend: {
+            position: "bottom",
+            labels: {
+              color: "#FFFFFF",
+              font: {
+                size: 16,
+              },
+            },
+          },
+          tooltip: {
+            enabled: true,
+            callbacks: {
+              label: (context) =>
+                `OEE Ratio: ${context.raw !== null ? context.raw.toFixed(4) : "N/A"}`, // Tooltip format
+            },
+          },
+        },
+      };
+  
+      setOeeGraphData({ data, options }); // Set the graph data
+    }
+  }, [oeeData]);
+  
 
   useEffect(() => {
     // Check if metricsData is available, and if so, execute the graph code
@@ -223,7 +328,7 @@ function Overview() {
         // console.log("materialslice", ratesData)
 
         datasets.push(materialData);
-        datasets.push(ratesData);
+        // datasets.push(ratesData);
         console.log(Object.keys(goalsData.raw));
         // console.log("material", material, materialData);
       }
@@ -235,6 +340,7 @@ function Overview() {
 
       const options = {
         responsive: true,
+        maintainAspectRatio: false,
         scales: {
           y: {
             title: {
@@ -254,8 +360,8 @@ function Overview() {
               },
             },
             border: {
-              display: true,
-              color: "#FFFFFF", // Bottom axis baseline color
+              // display: true,
+              // color: "#FFFFFF", // Bottom axis baseline color
             },
           },
           x: {
@@ -267,7 +373,7 @@ function Overview() {
             ticks: {
               color: "#FFFFFF80", // Sets tick labels color to white
               font: {
-                size: 16,
+                size: 12,
               },
             },
             border: {
@@ -278,10 +384,10 @@ function Overview() {
         },
         plugins: {
           legend: {
-            position: "right",
+            position: "bottom",
             labels: {
               font: {
-                size: 24,
+                size: 16,
               },
               color: "#FFFFFF",
             },
@@ -319,6 +425,9 @@ function Overview() {
       setGraphData({ data: data, options: options });
     }
   }, [metricsData, startDate, endDate, scheduleData]);
+
+
+
 
   const calculateFlexBasis = (produced, goal) => {
     const producedCount = produced || 0;
@@ -932,7 +1041,7 @@ function Overview() {
         style={{
           ...style_item_border,
           gridColumn: "2 / 4",
-          gridRow: "5 / 8",
+          gridRow: "5 / 10",
           color: "white",
         }}
       >
@@ -962,7 +1071,8 @@ function Overview() {
                   style={{
                     display: "flex",
                     flexDirection: "column",
-                    height: "50vh",
+                    position: "realative",
+                    height: "100vh",
                     border: "1px solid #FFFFFF",
                   }}
                 >
@@ -988,12 +1098,12 @@ function Overview() {
                     )
                   )}
                 </div>
-
+{/* 
                 {metricsData.raw[line].state === "running" ? (
-                  <div></div>
+                  <div>hi</div>
                 ) : (
-                  <div></div>
-                )}
+                  <div>hoo</div>
+                )} */}
               </div>
             ))
           ) : (
@@ -1014,8 +1124,8 @@ function Overview() {
         className="component-availibility"
         style={{
           ...style_item_border,
-          gridColumn: "3 / 4",
-          gridRow: "8 / 11",
+          gridColumn: "2 / 4",
+          gridRow: "10 / 11",
           color: "white",
         }}
       >
@@ -1025,8 +1135,23 @@ function Overview() {
         className="component-debug"
         style={{
           ...style_item_border,
-          gridColumn: "1",
+          gridColumn: "1/4",
           gridRow: "11 / 11",
+        }}
+      >
+
+
+      {oeeGraphData &&
+          Object.keys(oeeGraphData.options).length &&
+          Object.keys(oeeGraphData.data).length && (
+            <Line options={oeeGraphData.options} data={oeeGraphData.data} />
+          )}
+
+      </div>
+      <div
+        className="component-debug"
+        style={{
+          ...style_item_border,
         }}
       >
         <pre>
@@ -1041,6 +1166,7 @@ function Overview() {
           {scheduleData && JSON.stringify(scheduleData.rate, null, 4)},
         </pre>
       </div>
+      {/* <div className="">helooo</div> */}
     </div>
   );
 }

@@ -93,6 +93,13 @@ const materialsDict = {
   FIB: { code: "FIB", color: "#FF00FF", hex: "FF00FF", desc: "FIB Fiber" },
 };
 
+const material_lot_mass = {
+  "ONX": 4000,
+  "ES2": 4000,
+  "G16": 1000,
+  "316": 5000,
+}
+
 function Schedule() {
   const [input, setInput] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -101,15 +108,20 @@ function Schedule() {
   const [extrusionGoals, setExtrusionGoals] = useState([]);
   const [fiberGoals, setFiberGoals] = useState([]);
   const [compoundingGoals, setCompoundingGoals] = useState([]);
+
   const [selectedDate, setSelectedDate] = useState("");
+  const [selectedExistingDate, setSelectedExistingDate] = useState("");
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [existingMonths, setExistingMonths] = useState(null);
+
+  const [existingMonths, setExistingMonths] = useState([]);
+  const [existingMonthsData, setExistingMonthsData] = useState([]);
   const [goals, setGoals] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (e) => {
-    console.log(e.target.value);
+    console.log("poss date input", e.target.value);
     setSelectedDate(e.target.value)
   }
 
@@ -117,7 +129,47 @@ function Schedule() {
     // Format the date to "YYYY-MM"
     const formattedDate = new Date(year, month - 1).toISOString().slice(0, 7);
     setSelectedDate(formattedDate);
+    setSelectedExistingDate(formattedDate)
+    console.log("selected Date", formattedDate)
+    // if selected Date exists in the database pull up that selected months data -> use effect below
   };
+
+  // when setmonth is changed
+  useEffect(() => {
+    setLoading(true);
+    // setStream(null);
+    fetchData(
+      `/api/schedule/existing/month?start_date=${selectedExistingDate}`,
+      (data) => setExistingMonthsData(data)
+    );
+  }, [selectedExistingDate]);
+
+  useEffect(() => {
+    console.log("Selected date", selectedDate, "existingMonths", existingMonths, "selectedExistingDate", selectedExistingDate);
+
+    // Split the selectedDate into year and month
+    const [selectedYear, selectedMonth] = selectedDate.split('-').map(Number);
+
+    // Check if the selected date exists in the existingMonths array
+    if (existingMonths && existingMonths.data && existingMonths.data.length > 0) {
+      const dateExists = existingMonths.data.some(
+        (entry) => entry.year === selectedYear && entry.month === selectedMonth
+      );
+
+      if (dateExists) {
+        console.log("Date exists in the array");
+        // Optionally, you can set the selectedExistingDate or perform other actions
+        // setSelectedExistingDate(selectedDate);
+      } else {
+        console.log("Date does not exist in the array");
+        // Optionally, reset or clear the selection
+        setSelectedExistingDate("");
+      }
+    } else {
+      console.log("existing months is not populated correctly")
+    }
+    // Reset the stream or perform other necessary actions
+  }, [selectedExistingDate, existingMonths, selectedDate]);
 
 
   // Handle changes for any input field
@@ -289,7 +341,7 @@ function Schedule() {
   };
 
   return (
-    <div className="component-wrapper" style={{ padding: "4rem 5vw", backgroundColor: "#FFF",  height: "100%", flex: 1}}>
+    <div className="component-wrapper" style={{ padding: "4rem 5vw", backgroundColor: "#FFF", height: "400vh", flex: 1 }}>
       <div className="" style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "2.5rem", flexDirection: "row" }}>
         <div className="enter-date" style={style_category_dialog}>
           <div className="tab-header" style={style_tab_header}>
@@ -315,11 +367,12 @@ function Schedule() {
                       }}
                       onMouseEnter={(e) => { e.target.style.transform = "scale(1.05)"; }}
                       onMouseLeave={(e) => { e.target.style.transform = "scale(1)"; }}
-                      onClick={() =>
+                      onClick={() => (
                         handleMonthSelect(
                           existingMonths.data[month].month,
                           existingMonths.data[month].year
                         )
+                      )
                       }
                     >
                       <div style={{ fontSize: "0.9rem", color: "#3B82F6E2", fontWeight: "700", letterSpacing: "0.5px" }}>
@@ -330,6 +383,10 @@ function Schedule() {
                       </div>
                     </div>
                   ))}
+
+                  {/* displays the existing month data    */}
+
+
                 </div>
               </div>
             )}
@@ -350,9 +407,9 @@ function Schedule() {
         <div className="update-preview" style={style_category_dialog}>
           <div className="tab-header" style={style_tab_header}>
             <div style={style_tab_header_idx}>3</div>
-            <div style={style_tab_header_label}>Preview</div>
+            <div style={style_tab_header_label}>{!selectedExistingDate ? "Preview" : `${""}View/Update: ${selectedExistingDate}`}</div>
           </div>
-          <div className="tab-body" style={style_tab_body}>
+          {!selectedExistingDate ? (<div className="tab-body" style={style_tab_body}>
             {(input && input.length > 1) ? (
               <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                 {[input, parsedInput].map((data, tableIndex) => (
@@ -386,41 +443,76 @@ function Schedule() {
                 ))}
               </div>
             ) : (<div className="prompt-text" style={{ border: "1px solid #EEEEFF", backgroundColor: "#EEEEEE", height: "100%", borderRadius: "0.5rem", textAlign: "center", alignContent: "center", fontSize: "1rem", fontWeight: 500, color: "#CCCCCC", padding: "1rem 0rem" }}>paste schedule for preview</div>)}
-          </div>
+          </div>) :
+            (<div className="tab-body">
+              {existingMonths && existingMonthsData && existingMonthsData?.data && selectedExistingDate &&
+                <div style={{ width: "100%" }}>
+                  <div className="" style={{ float: "right" }}>{selectedExistingDate} Existing Schedule</div>
+                  <table style={{ width: "100%", borderCollapse: "collapse", backgroundColor: "#F9FAFB", borderRadius: "0.5rem", border: "none", overflow: "hidden", boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)", fontSize: "0.9rem" }}>
+                    <thead>
+                      <tr style={{ backgroundColor: "#3B82F6", color: "#FFF" }}>
+                        {Object.keys(existingMonthsData.data[0]).map((header, index) => (
+                          <th key={index} style={{ padding: "0.5rem", textAlign: "left", fontWeight: "600", fontSize: "0.875rem" }}>
+                            {header}
+                          </th>
+                        ))}
+                        <th className="" style={{ padding: "0.5rem", fontWeight: "600", fontSize: "0.875rem", textAlign: "center" }}>modify</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {
+                        existingMonthsData.data.map((row, index) => (
+                          <tr key={index} style={{ backgroundColor: index % 2 === 0 ? "#FFF" : "#F3F4F6", cursor: "pointer" }} onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#E5E7EB")} onMouseOut={(e) => (e.currentTarget.style.backgroundColor = index % 2 === 0 ? "#FFF" : "#F3F4F6")}>
+                            {Object.keys(row).map((cell, cellIndex) => (
+                              <td key={cellIndex} style={{ padding: "0.5rem", color: "#374151", fontWeight: 400 }}>{row[cell]}</td>
+                            ))}
+                            <div className="" style={{ display: "flex", justifyContent: "space-evenly", alignContent: "center", padding: "0.35rem" }}>
+                              <div className="" style={{ border: "1px solid #3B82F6", borderRadius: "0.25rem", padding: "0.125rem 0.5rem", color: "#3B82F6" }}>edit</div>
+                              <div className="" style={{ border: "1px solid #3B82F6", borderRadius: "0.25rem", padding: "0.125rem 0.5rem", color: "#3B82F6" }}>delete</div>
+                            </div>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              }
+            </div>)}
+
         </div>
         <div className="update-goals" style={style_category_dialog} id="goals">
+
           <div className="tab-header" style={style_tab_header}>
             <div style={style_tab_header_idx}>4</div>
             <div style={style_tab_header_label}>Update Goals</div>
           </div>
           <div className="tab-body" style={style_tab_body}>
-          {(input && input.length > 1) ?
-            ((extrusionGoals || fiberGoals || compoundingGoals) &&
-              [extrusionGoals, fiberGoals, compoundingGoals].map((goal, i) => Object.keys(goal).length > 0 && (
-                <table key={i} className="goals-table" style={{ width: "100%", borderCollapse: "collapse", backgroundColor: "#F9FAFB", borderRadius: "0.5rem", border: "none", overflow: "hidden", boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)", fontSize: "0.9rem", tableLayout: "fixed" }}>
-                  <colgroup>
-                    <col style={{ width: "50%" }} />
-                    <col style={{ width: "25%" }} />
-                    <col style={{ width: "25%" }} />
-                  </colgroup>
+            {(input && input.length > 1) ?
+              ((extrusionGoals || fiberGoals || compoundingGoals) &&
+                [extrusionGoals, fiberGoals, compoundingGoals].map((goal, i) => Object.keys(goal).length > 0 && (
+                  <table key={i} className="goals-table" style={{ width: "100%", borderCollapse: "collapse", backgroundColor: "#F9FAFB", borderRadius: "0.5rem", border: "none", overflow: "hidden", boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)", fontSize: "0.9rem", tableLayout: "fixed" }}>
+                    <colgroup>
+                      <col style={{ width: "50%" }} />
+                      <col style={{ width: "25%" }} />
+                      <col style={{ width: "25%" }} />
+                    </colgroup>
 
-                  {Object.keys(goal).length > 0 ? (<thead>
-                    <tr style={{ backgroundColor: "#3B82F6", color: "#FFF", padding: "0rem" }}>
-                      <th style={{ padding: "0.5rem", textAlign: "left", fontWeight: "600", fontSize: "0.875rem" }}>{["Extrusion", "Fiber", "Compounding"][i]}</th>
-                      <th style={{ padding: "0.5rem", textAlign: "left", fontWeight: "600", fontSize: "0.875rem" }}>Shifts</th>
-                      <th style={{ padding: "0.5rem", textAlign: "left", fontWeight: "600", fontSize: "0.875rem" }}>Goals</th>
-                    </tr>
-                  </thead>) : (<div></div>)}
-                  <tbody>
-                    {Object.keys(goal).map((entry, j) => (
-                      <tr key={j} style={{ backgroundColor: j % 2 === 0 ? "#FFFFFF" : "#F3F4F6", transition: "background-color 0.2s ease", cursor: "pointer" }} onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#E5E7EB")} onMouseOut={(e) => (e.currentTarget.style.backgroundColor = j % 2 === 0 ? "#FFFFFF" : "#F3F4F6")}>
-                        <td style={{ padding: "0.5rem", color: "#374151", fontWeight: 400 }}>
-                          {entry}
-                        </td>
-                        <td style={{ padding: "0.5rem", color: "#374151", fontWeight: 400 }}>
-                          {goal[entry]}
-                        </td>
-                        {/* <td style={{ padding: "0.5rem", color: "#374151", fontWeight: 400 }}>
+                    {Object.keys(goal).length > 0 ? (<thead>
+                      <tr style={{ backgroundColor: "#3B82F6", color: "#FFF", padding: "0rem" }}>
+                        <th style={{ padding: "0.5rem", textAlign: "left", fontWeight: "600", fontSize: "0.875rem" }}>{["Extrusion", "Fiber", "Compounding"][i]}</th>
+                        <th style={{ padding: "0.5rem", textAlign: "left", fontWeight: "600", fontSize: "0.875rem" }}>Shifts</th>
+                        <th style={{ padding: "0.5rem", textAlign: "left", fontWeight: "600", fontSize: "0.875rem" }}>Goals</th>
+                      </tr>
+                    </thead>) : (<div></div>)}
+                    <tbody>
+                      {Object.keys(goal).map((entry, j) => (
+                        <tr key={j} style={{ backgroundColor: j % 2 === 0 ? "#FFFFFF" : "#F3F4F6", transition: "background-color 0.2s ease", cursor: "pointer" }} onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#E5E7EB")} onMouseOut={(e) => (e.currentTarget.style.backgroundColor = j % 2 === 0 ? "#FFFFFF" : "#F3F4F6")}>
+                          <td style={{ padding: "0.5rem", color: "#374151", fontWeight: 400 }}>
+                            {entry}
+                          </td>
+                          <td style={{ padding: "0.5rem", color: "#374151", fontWeight: 400 }}>
+                            {goal[entry]}
+                          </td>
+                          {/* <td style={{ padding: "0.5rem", color: "#374151", fontWeight: 400 }}>
                           <input
                             type="text"
                             value={goal[entry] || ''}
@@ -428,22 +520,50 @@ function Schedule() {
                             style={{ width: "100%", padding: "0.25rem", border: "1px solid #E5E7EB", borderRadius: "0.25rem", fontSize: "0.75rem", backgroundColor: "#FFF" }}
                           />
                         </td> */}
-                        <td style={{ padding: "0.5rem", color: "#374151", fontWeight: 400 }}>
-                          <input
-                            type="number"
-                            // value={}
-                            onChange={(e) => handleGoalChange(e, entry)}
-                            style={{ width: "100%", padding: "0.25rem", border: "1px solid #E5E7EB", borderRadius: "0.25rem", fontSize: "0.9rem", backgroundColor: "#FFF" }}
-                            onFocus={(e) => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 5px rgba(59, 130, 246, 0.3)"; e.target.style.outline = "none"; }} 
-                            onBlur={(e) => { e.target.style.borderColor = "#DDDDDD"; e.target.style.boxShadow = "none"; e.target.style.outline = "none"; }} 
-                          />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ))) : (<div className="prompt-text" style={{ border: "1px solid #EEEEFF", backgroundColor: "#EEEEEE", height: "100%", borderRadius: "0.5rem", textAlign: "center", alignContent: "center", fontSize: "1rem", fontWeight: 500, color: "#CCCCCC", padding: "1rem 0rem" }}>paste schedule to enter goals</div>)}
+                          <td style={{ padding: "0.5rem", color: "#374151", fontWeight: 400 }}>
+                            <input
+                              type="number"
+                              // value={}
+                              onChange={(e) => handleGoalChange(e, entry)}
+                              style={{ width: "100%", padding: "0.25rem", border: "1px solid #E5E7EB", borderRadius: "0.25rem", fontSize: "0.9rem", backgroundColor: "#FFF" }}
+                              onFocus={(e) => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 5px rgba(59, 130, 246, 0.3)"; e.target.style.outline = "none"; }}
+                              onBlur={(e) => { e.target.style.borderColor = "#DDDDDD"; e.target.style.boxShadow = "none"; e.target.style.outline = "none"; }}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ))) : (<div className="prompt-text" style={{ border: "1px solid #EEEEFF", backgroundColor: "#EEEEEE", height: "100%", borderRadius: "0.5rem", textAlign: "center", alignContent: "center", fontSize: "1rem", fontWeight: 500, color: "#CCCCCC", padding: "1rem 0rem" }}>paste schedule to enter goals</div>)}
           </div>
+
+        </div>
+        <div className="update-metrics" style={style_category_dialog} id="metrics">
+
+          <div className="tab-header" style={style_tab_header}>
+            <div style={style_tab_header_idx}>6</div>
+            <div style={style_tab_header_label}>Demand Estimation</div>
+          </div>
+          <div className="tab-body" style={style_tab_body}>
+            {(input && input.length > 1) ? (<div className="m">
+              extrusion: {extrusionGoals && JSON.stringify(extrusionGoals)}
+              fiber: {fiberGoals && JSON.stringify(fiberGoals)}
+              compounding: {compoundingGoals && JSON.stringify(compoundingGoals)}
+              Available lots:
+
+              Partially available lots:
+
+              {goals && JSON.stringify(goals)}
+            </div>) : (
+              <div className="prompt-text" style={{ border: "1px solid #EEEEFF", backgroundColor: "#EEEEEE", height: "100%", borderRadius: "0.5rem", textAlign: "center", alignContent: "center", fontSize: "1rem", fontWeight: 500, color: "#CCCCCC", padding: "1rem 0rem" }}>paste schedule to estimate demand</div>)}
+
+
+
+
+
+
+          </div>
+
         </div>
         <div className="update-submit" style={style_category_dialog}>
           <div className="tab-header" style={style_tab_header}>
@@ -451,7 +571,7 @@ function Schedule() {
             <div style={style_tab_header_label}>Submit</div>
           </div>
           <div className="tab-body" style={style_tab_body}>
-            {input ?  <button
+            {input ? <button
               type="submit"
               onClick={handleSubmit}
               style={{
@@ -472,12 +592,12 @@ function Schedule() {
                 e.currentTarget.style.backgroundColor = "#3B82F6"
                 e.currentTarget.style.color = "white"
                 // handleSchemeClick("produced")
-            }}
+              }}
 
-            onMouseLeave={(e) => {
+              onMouseLeave={(e) => {
                 e.currentTarget.style.backgroundColor = "transparent"
                 e.currentTarget.style.color = "#3B82F6"
-            }}
+              }}
             >
               <span
                 style={{

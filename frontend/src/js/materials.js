@@ -1,3 +1,12 @@
+export const lineColor = {
+  "EX00" : "#ff6f00",
+  "EX01" : "#aaff00",
+  "EX02" : "#00ffb3",
+  "EX03" : "#0077ff",
+  "EX04" : "#cc00ff",
+}
+
+
 export const materialColor = {
     "316": "#00B5E2",
     "ES2": "#00BDD2",
@@ -7,13 +16,15 @@ export const materialColor = {
     "CPR": "#B24A00",
     "OFR": "#CF4520",
     "17F": "#2053B2",
-    "FIB": "#A3AB05",
-    "KEV": "#2E2830",
-    "CAR": "#16131A",
+    "FIB": "#cacaca",
+    "KEV": "#cacaca",
+    "CAR": "#cacaca",
+    "HST": "#cacaca",
     "625": "#47169C",
     "G16" :"#D8D0C1",
     "172" : "#3333FF",
-    "CFA" : "#333333",
+    "CFA" : "#cacaca",
+    "CFU" : "#cacaca",
     "174" : "#497eb8",
     "820" : "#ffe100",
     "AO1" : "#e9edf7",
@@ -23,11 +34,12 @@ export const materialColor = {
     "OFA" : "#D2451E",
     "H13" : "#fd6e4c",
     "HTS" : "#DA291C",
-    "PFR" : "#FFFFFF",
-    "RDM" : "#FFFFFF",
-    "RDP" : "#FFFFFF",
+    "PFR" : "#ff753a",
+    "RDM" : "#ffe600",
+    "RDP" : "#ffe600",
     "VGA" : "#2E2259",
-    "T64" : "#FFFFFF",
+    "T64" : "#cccccc",
+    "17P" : "#497eb8"
   };
 
  export const materialDict = {

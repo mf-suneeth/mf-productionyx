@@ -24,6 +24,157 @@ from ingest import ingest, ingest2, ingest3
 PRODUCTION_MATRIX = {}
 
 
+
+def fetch(query, params=None, validation=None):
+    # fetch rows from ignition db
+    try:
+        cnx = msc.connect(**IGNITION_DB_CLUSTER)
+        cursor = cnx.cursor()
+
+        cursor.execute(query, params)
+
+        columns = [desc[0] for desc in cursor.description]  # Get column names
+        return [dict(zip(columns, row)) for row in cursor.fetchall()]
+   
+    # standard exceptions
+    except msc.Error as e:
+        print(f"MySQL Error: {e}")
+        return None
+   
+    except Exception as e:
+            print(f"General Error querying database: {e}")
+            return None
+    
+    # close connection
+    finally:
+        try:
+            if cursor:
+                cursor.close()
+            if cnx:
+                cnx.close()
+        
+        except UnboundLocalError:
+            pass
+
+
+
+@app.route("/api/view/graph", methods=["GET"])
+def get_view_graph():
+
+    start_date = request.args.get("start_date")
+    end_date = request.args.get("end_date")
+
+    # Validate and parse dates
+    if not start_date or not end_date:
+        return jsonify({"error": "start_date and end_date are required"}), 400
+
+    try:
+        start_date = datetime.strptime(start_date, "%Y-%m-%d")
+        end_date = datetime.strptime(end_date, "%Y-%m-%d")
+        # print(start_date, end_date)
+    except ValueError:
+        return jsonify({"error": "Invalid date format. Use YYYY-MM-DD."}), 400
+
+    query = """
+        SELECT
+            DATE_FORMAT(start_time, %s) AS date,
+            material_id,
+            count(material_id) as net,
+            SUM(CASE WHEN status = 0 OR status = 5 OR status = 6 THEN 1 ELSE 0 END) as `0`,
+            SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) as `1`,
+            SUM(CASE WHEN status = 2 THEN 1 ELSE 0 END) as `2`
+        FROM 
+            extrusion_runs
+        WHERE 
+            start_time >= %s AND start_time < %s
+            AND line_id IN ('EX00', 'EX01', 'EX03', 'EX04')
+        GROUP BY 
+            date, 
+            material_id
+    """
+
+    params = ('%Y-%m-%d', start_date, end_date)
+
+    data  = fetch(query, params)
+    return jsonify({"data" : data}), 200
+
+
+@app.route("/api/metrics/oee", methods=["GET"])
+def get_oee_analytics():
+    try:
+        cnx = msc.connect(**IGNITION_DB_CLUSTER)
+        cursor = cnx.cursor()
+
+        query_1 = """
+            WITH runtime_data AS (
+                SELECT
+                    DATE_FORMAT(start_time, '%Y-%m') AS month,
+                    line_id,
+                    SUM(TIME_TO_SEC(logging_time)) AS total_logging_time_seconds,
+            #         SEC_TO_TIME(SUM(TIME_TO_SEC(logging_time))) AS total_logging_time,
+                    SUM(TIME_TO_SEC(run_time)) AS total_runtime_seconds
+            #         SEC_TO_TIME(SUM(TIME_TO_SEC(run_time))) AS total_runtime
+                FROM extrusion_runs
+                WHERE start_time >= '2024-01-01'
+                AND line_id IN ('EX00', 'EX01', 'EX03', 'EX04')
+                GROUP BY month, line_id
+            ),
+            scheduled_data AS (
+                SELECT
+                    DATE_FORMAT(date, '%Y-%m') AS month,
+                    line AS line_id,
+                    COUNT(line) * 8 * 3600 AS scheduled_time_seconds
+                FROM production_schedule
+                WHERE date >= '2024-01-01'
+                AND line IN ('EX00', 'EX01', 'EX03', 'EX04')
+                GROUP BY month, line
+            ),
+            quality_data AS (
+                SELECT
+                    DATE_FORMAT(start_time, '%Y-%m') AS month,
+                    line_id,
+                    COUNT(spool_id) AS total_count,
+                    SUM(CASE WHEN status = '000' THEN 1 ELSE 0 END) AS status_000_count,
+                    ROUND(SUM(CASE WHEN status = '000' THEN 1 ELSE 0 END) / COUNT(spool_id), 3) AS quality_ratio
+                FROM extrusion_runs
+                WHERE start_time >= '2024-01-01'
+                AND line_id IN ('EX00', 'EX01', 'EX03', 'EX04')
+                GROUP BY month, line_id
+            )
+            SELECT
+                r.month,
+                r.line_id,
+                r.total_logging_time_seconds,
+                r.total_runtime_seconds,
+                s.scheduled_time_seconds,
+                ROUND(r.total_logging_time_seconds / s.scheduled_time_seconds, 4) AS availability_ratio,
+                q.total_count,
+                q.status_000_count,
+                q.quality_ratio,
+                ROUND(q.quality_ratio * (r.total_logging_time_seconds / s.scheduled_time_seconds), 4) AS oee_ratio
+            FROM runtime_data r
+            JOIN scheduled_data s
+            ON r.month = s.month AND r.line_id = s.line_id
+            JOIN quality_data q
+            ON r.month = q.month AND r.line_id = q.line_id
+            ORDER BY r.month, r.line_id;
+        """
+
+        cursor.execute(query_1)
+
+        # zip the results into json
+        columns_1 = [desc[0] for desc in cursor.description]  # Get column names
+        results_1 = [dict(zip(columns_1, row)) for row in cursor.fetchall()]
+
+        cursor.close()
+        cnx.close()
+
+        return jsonify({"data": results_1})
+
+    except Exception as e:
+        print(f"Error: {e}")
+        return jsonify({"error": "An unknown error occurred", "details": str(e)}), 500
+
 # ////////////////////////////////////////////////////
 # System Routes
 # ////////////////////////////////////////////////////
@@ -56,8 +207,11 @@ def parse_fiber(req):
         count = "".join(filter(str.isdigit, fiber))  # Extract digits
         label = "".join(filter(str.isalpha, fiber))  # Extract letters
 
+        # Convert the count to an integer
+        count = int(count) if count else 0  # Handle case where there might be no number
+
         # Update counts in the dictionary
-        fibers_out[label] = fibers_out.get(label, "0") + count
+        fibers_out[label] = fibers_out.get(label, 0) + count  # Initialize with 0 if key is not present
 
     return fibers_out
 
@@ -1034,6 +1188,67 @@ def get_schedule_existing():
         print(f"Error: {e}")
         return jsonify({"error": "An unknown error occurred", "details": str(e)}), 500
 
+@app.route("/api/schedule/existing/month", methods=["GET"])
+def get_schedule_existing_month():
+    """
+    Join this information on the production goals by material
+    """
+
+    ## should default to the current month - >
+    existing_month = "2025-01"
+    existing_month = request.args.get("start_date")
+
+    try:
+        cnx = msc.connect(**IGNITION_DB_CLUSTER)
+        cursor = cnx.cursor()
+
+        query_1 = f"SELECT date, shift, line, material_id FROM production_schedule WHERE date LIKE '{existing_month}%' ORDER BY date, shift, line, material_id"
+
+        cursor.execute(query_1)
+
+        columns_1 = [desc[0] for desc in cursor.description]
+        results_1 = [dict(zip(columns_1, row)) for row in cursor.fetchall()]
+
+        query_2 = f"SELECT material_id, goal, date FROM production_goals WHERE date LIKE '{existing_month}%' ORDER BY date, material_id, goal"
+
+        cursor.execute(query_2)
+
+        columns_2 = [desc[0] for desc in cursor.description]
+        results_2 = [dict(zip(columns_2, row)) for row in cursor.fetchall()]
+
+        cursor.close()
+        cnx.close()
+
+        return jsonify({"data": results_1, "schedule": results_1, "goals": results_2})
+
+    except Exception as e:
+        print(f"Error: {e}")
+        return jsonify({"error": "An unknown error occurred", "details": str(e)}), 500
+
+@app.route("/api/schedule/existing/lots", methods=["GET"])
+def get_schedule_existing_lots():
+    """
+    Join this information on the production goals by material
+    """
+    try:
+        cnx = msc.connect(**IGNITION_DB_CLUSTER)
+        cursor = cnx.cursor()
+
+        query_1 = f"SELECT * FROM incoming_lots WHERE status = 'RELEASED'"
+
+        cursor.execute(query_1)
+
+        columns_1 = [desc[0] for desc in cursor.description]
+        results_1 = [dict(zip(columns_1, row)) for row in cursor.fetchall()]
+
+        cursor.close()
+        cnx.close()
+
+        return jsonify({"data": results_1})
+
+    except Exception as e:
+        print(f"Error: {e}")
+        return jsonify({"error": "An unknown error occurred", "details": str(e)}), 500
 
 # ////////////////////////////////////////////////////
 # Device/Hardware Routes
@@ -1343,6 +1558,31 @@ def parse_run_time(run_time):
             return timedelta(hours=h, minutes=m, seconds=s)
         except Exception as e:
             raise ValueError(f"Invalid run_time format: {run_time}") from e
+        
+@app.route("/api/metrics/graph", methods={"GET"})
+def get_monthly_analytics_graph():
+    """to pull in all time series graphs about extrusion...
+        to pull in runtime time series to show seconds running vs not running per extruder and material.
+        need labeling for the days of the week that are elapsed
+    """
+
+#         SELECT
+#     DATE_FORMAT(start_time, '%Y-%m-%d') AS day,
+#     material_id,
+#     count(material_id),
+#     SUM(CASE WHEN status = 0  THEN 1 ELSE 0 END) as `0`,
+#     SUM(CASE WHEN status = 1  THEN 1 ELSE 0 END) as `1`,
+#     SUM(CASE WHEN status = 2  THEN 1 ELSE 0 END) as `2`,
+#     SUM(CASE WHEN status = 5  THEN 1 ELSE 0 END) as `5`,
+#     SUM(CASE WHEN status = 6  THEN 1 ELSE 0 END) as `6`
+# FROM extrusion_runs
+# WHERE start_time >= '2025-01-01' AND start_time < '2025-01-31'
+#   AND line_id IN ('EX00', 'EX01', 'EX03', 'EX04')
+# GROUP BY day, material_id
+# ORDER BY day, material_id;
+    
+
+    pass
 
 @app.route("/api/metrics/extruder", methods=["GET"])
 def get_runtime_analytics():
@@ -1393,6 +1633,8 @@ def get_runtime_analytics():
 
         columns_1 = [desc[0] for desc in cursor.description]  # Get column names
         rows = [dict(zip(columns_1, row)) for row in cursor.fetchall()]
+
+        # print("query 1", rows)
         
         # Shift times as provided
         translate_shift = {
@@ -1462,19 +1704,23 @@ def get_runtime_analytics():
                     0 : 0,
                     1 : 0,
                     2 : 0, 
+                    5 : 0,
+                    6 : 0
                 }
-                net_meters_on_spool[material_id][status] = entry['meters_on_spool'] 
+                net_meters_on_spool[material_id][status] = entry['meters_on_spool'] if entry['meters_on_spool'] is not None else 0
             
 
             if material_id in net_meters_scanned:
-                net_meters_scanned[material_id][status] += entry['meters_on_spool']
+                net_meters_scanned[material_id][status] += entry['meters_on_spool'] if entry['meters_on_spool'] is not None else 0
             else:
                 net_meters_scanned[material_id] = {
                     0 : 0,
                     1 : 0,
                     2 : 0, 
+                    5 : 0,
+                    6 : 0
                 }
-                net_meters_scanned[material_id][status] = entry['meters_on_spool'] 
+                net_meters_scanned[material_id][status] = entry['meters_on_spool']  if entry['meters_on_spool'] is not None else 0
 
             if material_id in net_spools_created:
                 net_spools_created[material_id][status] += 1
@@ -1482,7 +1728,9 @@ def get_runtime_analytics():
                 net_spools_created[material_id] = {
                     0 : 0,
                     1 : 0,
-                    2 : 0, 
+                    2 : 0,
+                    5 : 0,
+                    6 : 0
                 }
                 net_spools_created[material_id][status] = 1
         
@@ -1531,6 +1779,8 @@ def get_runtime_analytics():
                             0: 0,
                             1: 0,
                             2: 0,
+                            5 : 0,
+                            6 : 0
                         }
 
         # Example output: the result is now stored in final_result dictionary
@@ -1618,10 +1868,10 @@ def get_runtime_analytics():
                         enriched_intervals.append({"start": current_end, "end": next_start, "state": "not running", "relative_start": relative_start, "relative_end": relative_end})
 
             timeseries[line_id] = enriched_intervals
-            # for line_id, intervals in timeseries.items():
-            #     print(f"Line ID: {line_id}")
-            #     for interval in intervals:
-            #         print(f"  {interval['start']} - {interval['end']} : {interval['state']}")
+                # for line_id, intervals in timeseries.items():
+                #     print(f"Line ID: {line_id}")
+                #     for interval in intervals:
+                #         print(f"  {interval['start']} - {interval['end']} : {interval['state']}")
 
             
     except Exception as e:
@@ -1631,6 +1881,7 @@ def get_runtime_analytics():
     return jsonify(
         {"raw": timeseries, "max_relative_end_time" : max_relative_end_time, "timeline": final_result, "meters_scanned": net_meters_scanned, "meters_on_spool": net_meters_on_spool, "spools_created" : net_spools_created}
     )   
+
 
 @app.route("/api/goals/extruder", methods=["GET"])
 def get_runtime_goals():
@@ -1682,10 +1933,6 @@ def get_schedule():
     start_date = request.args.get("start_date")  # 2025-01-08
     end_date = request.args.get("end_date")  # 2025-01-09
 
-    start_date = "2025-01-01"
-    end_date = "2025-01-07"
-
-    
     if not start_date or not end_date:
         return (
             jsonify({"error:": "both start_date and end_date parameters are required"}),
@@ -1707,6 +1954,26 @@ def get_schedule():
 
         columns_1 = [desc[0] for desc in cursor.description]  # Get column names
         results_1 = [dict(zip(columns_1, row)) for row in cursor.fetchall()]
+
+        # calculating the monthly schedule
+        VIEW_monthly = []
+        for row in results_1:
+            if len(row["material_id"]) > 3:
+                fiber_queue = parse_fiber(row["material_id"])
+
+                for fiber in fiber_queue:
+                    VIEW_monthly.append({
+                        "date": row["date"],
+                        "line": row["line"],
+                        "material_id": fiber,
+                        "shift": row["shift"],
+                        "goal" : fiber_queue[fiber]
+                    })
+                # print(row["material_id"], parse_fiber(row["material_id"]))
+
+            else:
+                VIEW_monthly.append(row)
+
 
 
         fixed_material_frequency = {}
@@ -1813,9 +2080,6 @@ def get_schedule():
             if material_id in material_frequency:
                 material_schedule_rate[material_id] = material_frequency[material_id] / fixed_material_frequency[material_id] 
             
-
-            
-        
         query_5 = """
             SELECT material_id, Count(*) / 2 as freq from production_schedule where date >= %s AND date <= %s GROUP BY material_id
         """
@@ -1831,17 +2095,164 @@ def get_schedule():
                 days_dict[row['material_id']] = row['freq']
 
 
-
     except Exception as e:
         print(f"Error: {e}")
         return jsonify({"error": "An unknown error occurred", "details": str(e)}), 500
 
     return jsonify(
-        {"raw": material_goals, "freq": material_frequency, "fixed" : fixed_material_frequency, "rate" : material_schedule_rate, "days": days_dict}
+        {"raw": material_goals, "freq": material_frequency, "fixed" : fixed_material_frequency, "rate" : material_schedule_rate, "days": days_dict, "monthly_schedule": VIEW_monthly}
     )
 
 
+from flask import Flask, jsonify, request
+import mysql.connector as msc
+
+@app.route("/api/incoming", methods=["GET"])
+def get_incoming():
+    try:
+        # Establish the database connection
+        cnx = msc.connect(**IGNITION_DB_CLUSTER)
+        cursor = cnx.cursor()
+        
+        # SQL query
+        query_1 = """
+            SELECT
+                er.material_id,
+                COUNT(er.spool_id) AS total_spools,
+                SUM(er.meters_on_spool) AS total_meters_on_spool,
+                SUM(er.meters_scanned) AS total_meters_scanned,
+                SUM(er.volume) AS volume,
+                (SUM(notes) / 1000) AS `KG`,
+                (il.mass / (SUM(notes) / 1000) ) AS tabulated_spool_ct,
+                SUM(
+                    CASE
+                        WHEN spec = 'Y' THEN 1
+                        WHEN spec = 'N' THEN 0
+                        ELSE 0
+                    END
+                ) AS spec_count,
+                er.status,
+                flc.feedstock_lot_id,
+                il.mass
+            FROM extrusion_runs AS er
+            JOIN filament_lot_changes AS flc
+                ON flc.filament_lot = er.filament_lot
+            JOIN incoming_lots AS il
+                ON il.lot_id = flc.feedstock_lot_id
+            GROUP BY
+                er.material_id,
+                flc.feedstock_lot_id,
+                status
+            ORDER BY
+                flc.feedstock_lot_id, status
+        """
+        
+        # Execute the query
+        cursor.execute(query_1)
+        
+        # Fetch and process results
+        columns_1 = [desc[0] for desc in cursor.description]
+        results_1 = [dict(zip(columns_1, row)) for row in cursor.fetchall()]
+
+        # split into dict ...
+
+        material_lots = {
+            # material_id 
+            #    2410FB2-10891:
+            #        0: {
+            #        mass: 
+            #        volume: 
+            #        length: 
+            #        status: 
+            #    },
+            #        1: {
+            #        mass: 
+            #        volume: 
+            #        length: 
+            #        status: 
+            #    },
+            #        2: {
+            #        mass: 
+            #        volume: 
+            #        length: 
+            #        status: 
+            #    },
+        }
+        
+        # Handle no results
+        if not results_1:
+            return jsonify({"error": "No data found"}), 404
     
+    except msc.errors.ProgrammingError as pe:
+        print(f"SQL Syntax Error: {pe}")
+        return jsonify({"error": "Database query failed", "details": str(pe)}), 400
+    except msc.errors.DatabaseError as db_err:
+        print(f"Database Error: {db_err}")
+        return jsonify({"error": "A database error occurred", "details": str(db_err)}), 500
+    except Exception as e:
+        print(f"Unexpected Error: {e}")
+        return jsonify({"error": "An unknown error occurred", "details": str(e)}), 500
+    finally:
+        # Ensure resources are cleaned up
+        if cursor:
+            cursor.close()
+        if cnx:
+            cnx.close()
+    
+    # Return results
+    return jsonify(results_1)
+
+
 
 if __name__ == "__main__":
     app.run(debug=True)
+
+
+
+class AnalyticsAPI:
+    def __init__(self, app, db_config):
+        self.app = app
+        self.db_config = db_config
+        self.setup_routes()
+
+    
+    def connect_db(self):
+        """Establish and return a database connection."""
+        return msc.connect(**self.db_config)
+
+    def execute_query(self, query, params=None):
+        """Reusable method to handle database queries with error handling."""
+        try:
+            cnx = self.connect_db()
+            cursor = cnx.cursor()
+            cursor.execute(query, params or [])
+            columns = [desc[0] for desc in cursor.description]
+            results = [dict(zip(columns, row)) for row in cursor.fetchall()]
+            return results
+        except msc.errors.ProgrammingError as pe:
+            raise RuntimeError(f"SQL Syntax Error: {pe}")
+        except msc.errors.DatabaseError as db_err:
+            raise RuntimeError(f"Database Error: {db_err}")
+        except Exception as e:
+            raise RuntimeError(f"Unexpected Error: {e}")
+        finally:
+            if cursor:
+                cursor.close()
+            if cnx:
+                cnx.close()
+    
+    def setup_routes(self):
+        """Define the API routes."""
+        self.app.route("ping", methods=["GET"])(self.api_default)
+        self.app.route("/api/goals/extruder", methods=["GET"])(self.get_runtime_goals)
+        self.app.route("/api/schedule", methods=["GET"])(self.get_schedule)
+        self.app.route("/api/incoming", methods=["GET"])(self.get_incoming)
+
+        
+    def api_default():
+        import time
+
+        delay = abs(int((random.gauss(0, 1) * 10)))
+        time.sleep(delay)
+
+        return jsonify({"pong": f"Hello from the backend! - slept for {delay} seconds"})
