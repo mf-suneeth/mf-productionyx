@@ -56,6 +56,248 @@ def fetch(query, params=None, validation=None):
         except UnboundLocalError:
             pass
 
+def validate_date(start_date, end_date):
+    if not start_date or not end_date: 
+        return jsonify({"error" : "start_date and end_Date are required"}), 400
+
+    try:
+        start_date = datetime.strptime(start_date, "%Y-%m-%d")
+        end_date = datetime.strptime(end_date, "%Y-%m-%d")
+        return start_date, end_date
+    except ValueError:
+        return jsonify({"error": "Invalid date format. Use YYYY-MM-DD."}), 400
+
+@app.route("/api/view", methods=["GET"])
+def get_view():
+    """renders the monthly schedule & attainment on the /view page"""
+
+    start_date = request.args.get("start_date")
+    end_date = request.args.get("end_date")
+
+    
+    if not start_date or not end_date: 
+        return jsonify({"error" : "start_date and end_date are required"}), 400
+
+    try:
+        start_date = datetime.strptime(start_date, "%Y-%m-%d")
+        end_date = datetime.strptime(end_date, "%Y-%m-%d")
+    except ValueError:
+        return jsonify({"error": "Invalid date format. Use YYYY-MM-DD."}), 400
+
+
+    # GET PRODUCTION SCHEDULE
+    query_production_schedule = """
+        SELECT 
+            DATE_FORMAT(date, '%Y-%m-%d') as date,
+            shift, 
+            line, 
+            material_id 
+        FROM 
+            production_schedule 
+        WHERE date >= %s
+            AND date < %s
+    """
+
+    params_production_schedule = (start_date, end_date)
+    data_production_schedule = fetch(query_production_schedule, params_production_schedule)
+
+    # GET PRODUCTION GOALS
+    query_production_goals = """
+        SELECT 
+            DATE_FORMAT(date, '%Y-%m-%d') as date,
+            material_id,
+            goal
+        FROM 
+            production_goals
+        WHERE date >= %s
+            AND date < %s
+    """
+
+    params_production_goals = (start_date, end_date)
+    data_production_goals = fetch(query_production_goals, params_production_goals)
+
+    # GET COMPOUNDING DATA
+    query_compounding_lots = """
+        SELECT 
+            DATE_FORMAT(created_at, '%Y-%m-%d') as date,
+            c.material_id,
+            SUM(c.mass) AS total_mass,
+            s.shift AS shift
+        FROM compounding_lots c
+        JOIN shift_translation s 
+            ON TIME(c.created_at) >= s.start_time 
+            AND (TIME(c.created_at) < s.end_time OR (s.shift = 3 AND s.end_time = '00:00:00'))
+        WHERE c.created_at >= %s 
+            AND c.created_at < %s
+        GROUP BY date, material_id, shift
+        ORDER BY date, shift
+    """
+
+    params_compounding_lots = (start_date, end_date)
+    data_compounding_lots = fetch(query_compounding_lots, params_compounding_lots)
+
+    # GET EXTRUSION DATA 
+    query_extrusion_runs = """
+        SELECT
+            DATE_FORMAT(e.start_time, '%Y-%m-%d') as date,
+            line_id,
+            material_id,
+            COUNT(CASE WHEN spool_id IS NOT NULL and status = 0  THEN 1 ELSE 0 END) as gs,
+            s.shift as shift
+        FROM
+            extrusion_runs e
+        JOIN shift_translation s
+            ON TIME(e.start_time) >= s.start_time
+            AND (TIME(e.start_time) < s.end_time OR (s.shift = 3 AND s.end_time = '00:00:00'))
+        WHERE e.start_time >= %s 
+            AND e.start_time < %s 
+        GROUP BY
+            date, shift, line_id, material_id
+        ORDER BY
+            date, shift, line_id, material_id
+    """
+
+    params_extrusion_runs = (start_date, end_date)
+    data_extrusion_runs = fetch(query_extrusion_runs, params_extrusion_runs)
+
+
+    # GET FIBER DATA 
+    query_production_spools = """
+        WITH line_runtime AS (
+            SELECT
+                DATE(l.start_time) AS run_date,
+                l.material_id,
+                l.line_id,
+                s.shift AS shift
+            FROM production_spools l
+            JOIN shift_translation s
+                ON TIME(l.start_time) >= s.start_time
+                AND (TIME(l.start_time) < s.end_time OR (s.shift = 3 AND s.end_time = '00:00:00'))
+        )
+        SELECT
+            DATE_FORMAT(run_date, '%Y-%m-%d') as date,
+            material_id,
+            shift,
+            COUNT(DISTINCT line_id) AS running_lines
+        FROM line_runtime
+        WHERE run_date >= %s AND run_date <= %s
+        GROUP BY run_date, material_id, shift
+        ORDER BY run_date, shift
+    """
+
+    params_production_spools = (start_date, end_date)
+    data_production_spools = fetch(query_production_spools, params_production_spools)
+
+    net_data_json = {"schedule" : data_production_schedule, "goals" : data_production_goals ,"compounding" : data_compounding_lots, "extrusion" : data_extrusion_runs, "fiber":  data_production_spools}
+    # process tha data
+
+
+    # Define the start and end of the month
+    start_date = datetime(2025, 1, 1)
+    end_date = datetime(2025, 1, 31)
+
+    # Initialize the structured dictionary
+    structured_data = defaultdict(lambda: {"compounding": {"scheduled": {}, "unscheduled": {}},
+                                        "extrusion": {"scheduled": {}, "unscheduled": {}},
+                                        "fiber": {"scheduled": {}, "unscheduled": {}}})
+
+    # Convert schedule into an easy lookup
+    scheduled_map = defaultdict(set)
+    for entry in net_data_json["schedule"]:
+        scheduled_map[entry["date"]].add(entry["material_id"])
+
+    # Convert goals into an easy lookup
+    goal_map = {goal["material_id"]: goal["goal"] for goal in net_data_json["goals"]}
+
+    # Process compounding data
+    for entry in net_data_json["compounding"]:
+        date_key = datetime.strptime(entry["date"], "%Y-%m-%d").strftime("%Y-%m-%d")
+        material_id = entry["material_id"]
+        
+        compounding_type = "scheduled" if material_id in scheduled_map[entry["date"]] else "unscheduled"
+        structured_data[date_key]["compounding"][compounding_type][material_id] = {
+            "goal": goal_map.get(material_id, ""),
+            "produced": entry["total_mass"],
+            "line": "CMP0",
+            "shift" : entry["shift"]
+        }
+
+    # Process extrusion data
+    for entry in net_data_json["extrusion"]:
+        date_key = datetime.strptime(entry["date"], "%Y-%m-%d").strftime("%Y-%m-%d")
+        material_id = entry["material_id"]
+        
+        extrusion_type = "scheduled" if material_id in scheduled_map[entry["date"]] else "unscheduled"
+        structured_data[date_key]["extrusion"][extrusion_type][material_id] = {
+            "goal": goal_map.get(material_id, ""),
+            "produced": entry["gs"],
+            "line": entry["line_id"],
+            "shift" : entry["shift"]
+        }
+
+    # Process fiber data
+    for entry in net_data_json["fiber"]:
+        date_key = datetime.strptime(entry["date"], "%Y-%m-%d").strftime("%Y-%m-%d")
+        material_id = entry["material_id"]
+        
+        fiber_type = "scheduled" if material_id in scheduled_map[entry["date"]] else "unscheduled"
+        structured_data[date_key]["fiber"][fiber_type][material_id] = {
+            "goal": goal_map.get(material_id, ""),
+            "lines_running": entry["running_lines"],
+            "shift" : entry["shift"]
+        }
+
+    # Ensure all days of the month are included
+    current_date = start_date
+    while current_date <= end_date:
+        date_key = current_date.strftime("%Y-%m-%d")
+        if date_key not in structured_data:
+            structured_data[date_key] = {
+                "compounding": {"scheduled": {}, "unscheduled": {}},
+                "extrusion": {"scheduled": {}, "unscheduled": {}},
+                "fiber": {"scheduled": {}, "unscheduled": {}}
+            }
+        current_date += timedelta(days=1)
+
+    # Convert back to a normal dict for JSON output
+    # formatted_output = json.dumps(structured_data, indent=4)
+    # print(formatted_output)
+    
+    return structured_data, 200
+   
+
+@app.route("/api/view/compounding", methods=["GET"])
+def get_view_compounding():
+    
+    validation_result = validate_date(request.args.get("start_date"), request.args.get("end_date"))
+
+    # Check if the validation result is an error response
+    if isinstance(validation_result, tuple) and isinstance(validation_result[0], dict):
+        return validation_result  # Return the error response immediately
+
+    start_date, end_date = validation_result  # Unpack only if validation passed
+
+    query = """
+        SELECT 
+            created_at as date,
+            c.material_id,
+            SUM(c.mass) AS total_mass,
+            s.shift AS shift
+        FROM compounding_lots c
+        JOIN shift_translation s 
+            ON TIME(c.created_at) >= s.start_time 
+            AND (TIME(c.created_at) < s.end_time OR (s.shift = 3 AND s.end_time = '00:00:00'))
+        WHERE c.created_at >= %s 
+            AND c.created_at < %s
+        GROUP BY date, material_id, shift
+        ORDER BY date DESC, shift ASC
+    """
+
+    params = (start_date, end_date)
+
+    data = fetch(query, params)
+    return jsonify({"data" : data}), 200
+
 
 
 @app.route("/api/view/graph", methods=["GET"])

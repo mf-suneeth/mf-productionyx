@@ -2,11 +2,9 @@ import React, { useEffect, useState } from "react";
 import moment from "moment";
 import * as styles from "./styles";
 import "../css/App.css";
-import { materialColor } from "./materials";
+import { materialColor, translateCompounding } from "./materials";
 import { useNavigate } from "react-router-dom";
 import { useLocation } from "react-router-dom";
-
-
 
 import {
   Chart as ChartJS,
@@ -41,7 +39,19 @@ function View() {
     if (!dateStr) return moment().format("YYYY-MM"); // Default to current month if empty
 
     // Try parsing with moment.js
-    let parsedDate = moment(dateStr, ["YYYY-MM", "YYYY/MM", "YYYY MM", "MM-DD-YYYY", "DD-MM-YYYY", "YYYY/MM/DD", "YYYY MM DD"], true);
+    let parsedDate = moment(
+      dateStr,
+      [
+        "YYYY-MM",
+        "YYYY/MM",
+        "YYYY MM",
+        "MM-DD-YYYY",
+        "DD-MM-YYYY",
+        "YYYY/MM/DD",
+        "YYYY MM DD",
+      ],
+      true
+    );
 
     if (!parsedDate.isValid()) {
       return moment().format("YYYY-MM"); // Default if invalid
@@ -50,10 +60,9 @@ function View() {
     return parsedDate.format("YYYY-MM"); // Normalize to "YYYY-MM"
   };
 
-
-
-
-  const [selectedDate, setSelectedDate] = useState((urlDate && normalizeDate(urlDate))|| moment().format("YYYY-MM"));
+  const [selectedDate, setSelectedDate] = useState(
+    (urlDate && normalizeDate(urlDate)) || moment().format("YYYY-MM")
+  );
   const [startDate, setStartDate] = useState(
     moment(selectedDate).startOf("month").format("YYYY-MM-DD")
   );
@@ -68,6 +77,9 @@ function View() {
   const [scheduleData, setScheduleData] = useState({});
   const [graphData, setGraphData] = useState({});
   const [graphFormat, setGraphFormat] = useState({});
+  const [compoundingData, setCompoundingData] = useState({});
+  const [fiberLinesData, setFiberLinesData] = useState({});
+  const [viewData, setViewData] = useState({});
 
   const [scheduleOutline, setScheduleOutline] = useState([]);
 
@@ -159,6 +171,22 @@ function View() {
   }, [startDate, endDate]);
 
   useEffect(() => {
+    setLoading(true);
+    fetchData(
+      `http://localhost:5000/api/view/compounding?start_date=${startDate}&end_date=${endDate}`,
+      (data) => setCompoundingData(data.data)
+    );
+  }, [startDate, endDate]);
+
+  useEffect(() => {
+    setLoading(true);
+    fetchData(
+      `http://localhost:5000/api/view?start_date=${startDate}&end_date=${endDate}`,
+      (data) => setViewData(data)
+    );
+  }, [startDate, endDate]); 
+
+  useEffect(() => {
     if (!graphData || !graphData.data) return;
 
     console.log("Raw Data:", graphData.data);
@@ -222,7 +250,7 @@ function View() {
               color: "#FFFFFF", // Bottom axis baseline color
             },
           },
-          y: { },
+          y: {},
         },
       },
     });
@@ -261,7 +289,6 @@ function View() {
     setEndDate(endDate);
 
     navigate(`?${e.target.value}`);
-
   };
 
   return (
@@ -314,7 +341,11 @@ function View() {
       </div>
       <div
         className="view-edit-targets"
-        style={{ display: "flex", justifyContent: "center", gap: "1rem", marginBottom: "4rem"
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          gap: "1rem",
+          marginBottom: "4rem",
         }}
       >
         <div className="view-edit-ovens" style={styles.view_button}>
@@ -340,12 +371,12 @@ function View() {
             gridColumn: "1",
             gridRow: "1",
             justifyContent:
-            metricsData &&
-            metricsData["spools_created"] &&
-            Object.keys(metricsData["spools_created"]).length > 3
-              ? "space-between" // More than 3 items → evenly spaced
-              : "flex-start", // Few items → aligned at the top
-          gap: "0.5rem",
+              metricsData &&
+              metricsData["spools_created"] &&
+              Object.keys(metricsData["spools_created"]).length > 3
+                ? "space-between" // More than 3 items → evenly spaced
+                : "flex-start", // Few items → aligned at the top
+            gap: "0.5rem",
           }}
         >
           {/* {JSON.stringify(metricsData["spools_created"])} */}
@@ -370,7 +401,8 @@ function View() {
                       borderBottomLeftRadius: "0.5rem",
                       padding: "0.25rem 0.75rem",
                       backgroundColor: materialColor[material_id] + "E6",
-                      color: (material_id in materialColor ? "#FFFFFF" : "#000000"),
+                      color:
+                        material_id in materialColor  && material_id !== "AO1"? "#FFFFFF" : "#000000",
                       letterSpacing: "1px",
                       fontSize: "1.25rem",
                       fontWeight: 400,
@@ -379,9 +411,8 @@ function View() {
                     {material_id}
                   </div>
                   {Object.keys(metricsData["spools_created"][material_id])
-                  .filter((status) => Number(status) === 0)
-                  .map(
-                    (status, jdx) => (
+                    .filter((status) => Number(status) === 0)
+                    .map((status, jdx) => (
                       <div
                         key={`${idx}-${jdx}`}
                         className=""
@@ -400,7 +431,8 @@ function View() {
                           padding: "0.5rem",
                           borderTopRightRadius: `${jdx === 0 ? 0.25 : 0}rem`,
                           borderBottomRightRadius: `${jdx === 0 ? 0.25 : 0}rem`,
-                          color: "white",
+                          color:                         
+                            material_id in materialColor  && material_id !== "AO1"? "#FFFFFF" : "#000000",
                           // display: metricsData["spools_created"][material_id][status] === 5 || metricsData["spools_created"][material_id][status] === 6 ? "none" : "block",
                           // display: : false,
                           //   borderRadius: "0.5rem",
@@ -408,8 +440,7 @@ function View() {
                       >
                         {metricsData["spools_created"][material_id][status]}
                       </div>
-                    )
-                  )}
+                    ))}
                   <div
                     className="goal"
                     style={{
@@ -605,10 +636,50 @@ function View() {
                           // border: "1px solid blue",
                         }}
                       >
+                        {compoundingData &&
+                          compoundingData.filter((compound) => (
+                              compound.shift === 1 &&
+                              moment(compound.date).format("YYYY-MM-DD") ===
+                              moment(day).format("YYYY-MM-DD")
+                            )).map((compound, idx) => (
+                            <div
+                              className=""
+                              key={idx}
+                              style={{
+                                borderRadius: "0.35rem",
+                                color: materialColor[translateCompounding[compound.material_id]],
+                                backgroundColor: materialColor[translateCompounding[compound.material_id]] + "20",
+                                // fontWeight: 600,
+                                fontSize: "1.25rem",
+                                display: "flex",
+                                overflow: "hidden",
+                                width: "100%",
+                                // backgroundColor:
+                                //   materialColor[translateCompounding[compound.material_id]],
+                                border: `1px solid ${materialColor[translateCompounding[compound.material_id]]}`,
+                                padding: "0.25rem 0.5rem",
+                                justifyContent: "space-between",
+                              }}
+                            >
+                              <div className="">
+                                CMP0 {compound.material_id}
+                              </div>
+                              <div className="">-</div>{" "}
+                              <div className="">{compound.total_mass}</div>
+                            </div>
+                          ))}
+
+                          <pre className=""> {day} {viewData && day && JSON.stringify(viewData[day], null, 2)}</pre>
+                          {/* {day && viewData && Object.keys(viewData?.[day]).map(()=> (
+                            <div className="">
+hi
+                            </div>
+                          ))} */}
+
                         {scheduleData &&
                           metricsData &&
                           shift1Data.map((entry, idx) => (
-                            <div
+                            <div 
                               key={idx}
                               className=""
                               style={{
@@ -628,25 +699,55 @@ function View() {
                                 justifyContent: "space-between",
                               }}
                             >
+                              {/* <pre>{JSON.stringify(entry.material_id, null, 4)}</pre> */}
+
                               <div className="">
                                 {entry.line} {entry.material_id}
                               </div>
                               <div className="">-</div>
-
                               <div className="">
-                                {metricsData.timeline?.[entry.material_id]?.[
-                                  day
-                                ]?.["1"]?.[0]
+                                {entry.line !== "CMP0" && entry.line !== "CMP1"
                                   ? metricsData.timeline?.[entry.material_id]?.[
                                       day
                                     ]?.["1"]?.[0]
-                                  : 0}{" "}
+                                    ? metricsData.timeline?.[
+                                        entry.material_id
+                                      ]?.[day]?.["1"]?.[0]
+                                    : 0
+                                  : compoundingData.filter((compounding) => {
+                                      const formattedCompoundingDate = new Date(
+                                        compounding.date
+                                      )
+                                        .toISOString()
+                                        .split("T")[0];
+                                      const formattedEntryDate = new Date(
+                                        entry.date
+                                      )
+                                        .toISOString()
+                                        .split("T")[0];
+
+                                      // Get translated material ID for entry
+                                      const translatedMaterialId =
+                                        translateCompounding[
+                                          entry.material_id
+                                        ] || entry.material_id;
+
+                                      return (
+                                        formattedCompoundingDate ===
+                                          formattedEntryDate &&
+                                        translatedMaterialId ===
+                                          compounding.material_id
+                                      );
+                                    })[0]?.total_mass}{" "}
                                 /{" "}
                                 {goalsData &&
                                   scheduleData &&
-                                  goalsData[entry.material_id] && Math.round(
+                                  goalsData[entry.material_id] &&
+                                  Math.round(
                                     goalsData[entry.material_id] /
-                                      (scheduleData?.freq[entry.material_id] ? scheduleData?.freq[entry.material_id] : 1)
+                                      (scheduleData?.freq[entry.material_id]
+                                        ? scheduleData?.freq[entry.material_id]
+                                        : 1)
                                   )}
                               </div>
                             </div>
@@ -711,13 +812,16 @@ function View() {
                                   ? metricsData.timeline?.[entry.material_id]?.[
                                       day
                                     ]?.["1"]?.[0]
-                                  : 0} {" "}
-                                / {" "}
+                                  : 0}{" "}
+                                /{" "}
                                 {goalsData &&
                                   scheduleData &&
-                                  goalsData[entry.material_id] && Math.round(
+                                  goalsData[entry.material_id] &&
+                                  Math.round(
                                     goalsData[entry.material_id] /
-                                      (scheduleData?.freq[entry.material_id] ? scheduleData?.freq[entry.material_id] : 1)
+                                      (scheduleData?.freq[entry.material_id]
+                                        ? scheduleData?.freq[entry.material_id]
+                                        : 1)
                                   )}
                               </div>
                             </div>

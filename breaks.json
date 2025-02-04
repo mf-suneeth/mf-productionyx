@@ -2,4 +2,109 @@
    "11/04/24" : "Thanksgiving",
    "11/27/24" : "Thanksgiving 2",
    "11/28/24" : "Thanksgiving 3"
+},
+
+
+
+{
+   "25-01-01" : {
+      "compounding" : {
+            "scheduled" : {
+               "ONX" : {
+                  "goal" : "",
+                  "produced" : "",
+                  "line" : "CMP0"
+               },
+               "17F" : {
+                  "goal" : "",
+                  "produced" : "",
+                  "line" : "CMP0"
+               }
+            },
+            "unscheduled" : {
+               "ONX" : {
+                  "produced" : "",
+                  "line" : "CMP0"
+               },
+               "17F" : {
+                  "goal" : "",
+                  "produced" : "",
+                  "line" : "CMP0"
+               }
+            }
+         },
+         "fiber" : {
+            "scheduled" : {
+               "CAR" : {
+                  "goal" : "",
+                  "lines_running" : ""
+               },
+               "CFU" : {
+                  "goal" : "",
+                  "lines_running" : ""
+               }
+            },
+            "unscheduled" : {
+               "ONX" : {
+                  "produced" : "",
+                  "line" : ""
+               },
+               "17F" : {
+                  "goal" : "",
+                  "produced" : "",
+                  "line" : ""
+               }
+            }
+         },
+         "fiber" : {
+            "scheduled" : {
+               "CAR" : {
+                  "goal" : "",
+                  "lines_running" : ""
+               },
+               "CFU" : {
+                  "goal" : "",
+                  "lines_running" : ""
+               }
+            },
+            "unscheduled" : {
+               "ONX" : {
+                  "produced" : "",
+                  "line" : ""
+               },
+               "17F" : {
+                  "goal" : "",
+                  "produced" : "",
+                  "line" : ""
+               }
+            }
+         },
+         "extrusion" : {
+            "scheduled" : {
+               "ONX" : {
+                  "goal" : "",
+                  "produced" : "",
+                  "line": "EX03"
+               },
+               "VGA" : {
+                  "goal" : "",
+                  "produced" : "",
+                  "line": "EX04"
+               }
+            },
+            "unscheduled" : {
+               "ONX" : {
+                  "produced" : "",
+                  "line": "EX03"
+               },
+               "17F" : {
+                  "goal" : "",
+                  "produced" : "",
+                  "line": "EX03"
+               }
+            }
+         }
+   },
+   "25-01-02" : {...},
+   "25-01-03" : {...},
 }
