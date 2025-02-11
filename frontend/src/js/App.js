@@ -56,20 +56,20 @@ function App() {
             }}
           >
             <li>
-              <Link to="#" style={{ fontSize: "1.5rem" }}>
+              <Link to="/" style={{ fontSize: "1.5rem" }}>
                 Scheduler
               </Link>
             </li>
             <li>{/* <Link to="/">View</Link> */}</li>
             <li>
-              <Link to="/schedule">Enter</Link>
+              <Link to="/enter">Enter</Link>
             </li>
             <li>
-              <Link to="/view">Schedule</Link>
+              <Link to="/view">View</Link>
             </li>
-            <li>
+            {/* <li>
               <Link to="/overview">Overview</Link>
-            </li>
+            </li> */}
             <li>
               <Link to="/production">Production</Link>
             </li>
@@ -102,11 +102,11 @@ function App() {
         <Routes>
           <Route
             path="/"
-            element={<FetchMonth url="http://localhost:5000/api/cal" />}
+            element={<Overview />}
           />
-          <Route path="/schedule" element={<Schedule />} />
+          <Route path="/enter" element={<Schedule />} />
           <Route path="/show-month" element={<ShowMonth />} />
-          <Route path="/overview" element={<Overview />} />
+          {/* <Route path="/overview" element={<Overview />} /> */}
           <Route path="/production" element={<Production />} />
           <Route path="/extrusion" element={<Extrusion />} />
           <Route path="/view" element={<View />} />

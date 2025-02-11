@@ -5,6 +5,44 @@
 },
 
 
+"3CFU CFA 12CAR 4KEV HST 5FIB": {
+   "goal": "",
+   "line": "",
+   "produced": 0,
+   "shift": ""
+}, 
+
+"CFU": {
+   "goal": "3",
+   "line": "",
+   "produced": X,
+   "shift": ""
+}, 
+
+"CAR": {
+   "goal": "12",
+   "line": "",
+   "produced": X,
+   "shift": ""
+}, 
+
+"KEV": {
+   "goal": "4",
+   "line": "",
+   "produced": X,
+   "shift": ""
+}, 
+
+"FIB": {
+   "goal": "5",
+   "line": "",
+   "produced": X,
+   "shift": ""
+}, 
+
+
+
+
 
 {
    "25-01-01" : {

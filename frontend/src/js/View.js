@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import moment from "moment";
 import * as styles from "./styles";
 import "../css/App.css";
-import { materialColor, translateCompounding } from "./materials";
+import { materialColor, translateRawMaterial } from "./materials";
 import { useNavigate } from "react-router-dom";
 import { useLocation } from "react-router-dom";
 
@@ -72,16 +72,36 @@ function View() {
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState("");
+
   const [metricsData, setMetricsData] = useState({});
+  const [loadingMetricsData, setLoadingMetricsData] = useState(true);
+
   const [goalsData, setGoalsData] = useState({});
   const [scheduleData, setScheduleData] = useState({});
+  const [loadingScheduleData, setLoadingScheduleData] = useState(true);
+
+  const [viewData, setViewData] = useState({});
+  const [loadingViewData, setLoadingViewData] = useState(true);
+
   const [graphData, setGraphData] = useState({});
   const [graphFormat, setGraphFormat] = useState({});
+  const [loadingGraphData, setLoadingGraphData] = useState(true);
+
   const [compoundingData, setCompoundingData] = useState({});
   const [fiberLinesData, setFiberLinesData] = useState({});
-  const [viewData, setViewData] = useState({});
 
   const [scheduleOutline, setScheduleOutline] = useState([]);
+
+  // toggle styling
+  const [dateFormatStyle, setDateFormatStyle] = useState(true);
+
+  const [showHideDetails, setShowHideDetails] = useState(false);
+  const [loadingDetailsData, setLoadingDetailsData] = useState(true);
+  const [detailsData, setDetailsData] = useState({});
+
+
+  const [loadingCountsData, setLoadingCountsData] = useState(true);
+  const [countsData, setCountsData] = useState({});
 
   const style_attainment_container = {
     display: "grid",
@@ -89,19 +109,22 @@ function View() {
     gridTemplateRows: "repeat(1, 1fr)",
     justifyContent: "space-between",
     position: "relative",
+    minHeight: "35vh",
   };
 
   const style_schedule_container_header = {
     display: "grid",
     gridTemplateColumns: "repeat(7, 1fr)",
     gridTemplateRows: "repeat(1, 1fr)",
+    columnGap: "1%",
   };
 
   const style_schedule_container_body = {
     display: "grid",
     gridTemplateColumns: "repeat(7, 1fr)",
     gridTemplateRows: "repeat(, 1fr)",
-    gap: "1%",
+    columnGap: "1%",
+    rowGap: "2rem",
   };
 
   const style_days_of_the_week = {
@@ -109,6 +132,30 @@ function View() {
     color: "#D9D9D9",
     fontSize: "1.5rem",
   };
+
+  const style_table = {
+    width: "100%",
+    borderCollapse: "collapse",
+    borderRadius: "5rem",
+    marginBottom: "2rem",
+  };
+
+  const style_th_td = {
+    border: "1px solid #ddd",
+    padding: "0.75rem",
+    textAlign: "left",
+  };
+
+  const style_th = {
+    ...style_th_td,
+    backgroundColor: "#D9D9D920",
+    fontWeight: "600",
+  };
+
+  // const trStyle = (index) => ({
+  //   backgroundColor: index % 2 === 0 ? "#ffffff" : "#f9f9f9", // Alternating row colors
+  // });
+
 
   const fetchData = async (url, setData) => {
     try {
@@ -139,10 +186,35 @@ function View() {
   }
 
   useEffect(() => {
-    setLoading(true);
+    setLoadingMetricsData(true);
     fetchData(
-      `http://localhost:5000/api/metrics/extruder?start_date=${startDate}&end_date=${endDate}`,
-      (data) => setMetricsData(data)
+      `http://localhost:5000/api/view/metrics?start_date=${startDate}&end_date=${endDate}`,
+      (data) => {
+        setMetricsData(data);
+        setLoadingMetricsData(false);
+      }
+    );
+  }, [startDate, endDate]);
+
+  useEffect(() => {
+    setLoadingDetailsData(true);
+    fetchData(
+      `http://localhost:5000/api/view/details?start_date=${startDate}&end_date=${endDate}`,
+      (data) => {
+        setDetailsData(data);
+        setLoadingDetailsData(false);
+      }
+    );
+  }, [startDate, endDate]);
+
+  useEffect(() => {
+    setLoadingCountsData(true);
+    fetchData(
+      `http://localhost:5000/api/view/counts?start_date=${startDate}&end_date=${endDate}`,
+      (data) => {
+        setCountsData(data);
+        setLoadingCountsData(false);
+      }
     );
   }, [startDate, endDate]);
 
@@ -155,18 +227,24 @@ function View() {
   }, [startDate, endDate]);
 
   useEffect(() => {
-    setLoading(true);
+    setLoadingScheduleData(true);
     fetchData(
       `http://localhost:5000/api/schedule?start_date=${startDate}&end_date=${endDate}`,
-      (data) => setScheduleData(data)
+      (data) => {
+        setScheduleData(data)
+        setLoadingScheduleData(false);
+      }
     );
   }, [startDate, endDate]);
 
   useEffect(() => {
-    setLoading(true);
+    setLoadingGraphData(true);
     fetchData(
       `http://localhost:5000/api/view/graph?start_date=${startDate}&end_date=${endDate}`,
-      (data) => setGraphData(data)
+      (data) => {
+        setGraphData(data);
+        setLoadingGraphData(true);
+      }
     );
   }, [startDate, endDate]);
 
@@ -179,82 +257,90 @@ function View() {
   }, [startDate, endDate]);
 
   useEffect(() => {
-    setLoading(true);
+    setLoadingViewData(true);
     fetchData(
       `http://localhost:5000/api/view?start_date=${startDate}&end_date=${endDate}`,
-      (data) => setViewData(data)
+      (data) => {
+        setViewData(data);
+        setLoadingViewData(false);
+      }
     );
-  }, [startDate, endDate]); 
-
+  }, [startDate, endDate]);
   useEffect(() => {
-    if (!graphData || !graphData.data) return;
+    if (!graphData?.data) return;
 
-    console.log("Raw Data:", graphData.data);
+    const timer = setTimeout(() => {
+      const labels = [...new Set(graphData.data.map(item => item.date))].sort();
+      const materialIds = [...new Set(graphData.data.map(item => item.material_id))];
 
-    // Extract unique dates and sort them
-    const labels = [...new Set(graphData.data.map((item) => item.date))].sort();
+      const datasets = materialIds.map(materialId => {
+        const materialData = graphData.data.filter(item => item.material_id === materialId);
+        const data = labels.map(date => materialData.find(item => item.date === date)?.net || 0);
 
-    console.log("Labels (Dates):", labels);
+        return {
+          label: materialId,
+          data,
+          backgroundColor: materialColor[materialId] || "#000000",
+          borderColor: materialColor[materialId] || "#000000",
+          tension: 0.4,
+          fill: false,
+        };
+      });
 
-    // Extract unique material IDs
-    const materialIds = [
-      ...new Set(graphData.data.map((item) => item.material_id)),
-    ];
+      setGraphFormat({
+        data: { labels, datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: true, position: "top", labels: { color: "#333333", font: { size: 14 } } },
+            tooltip: {
+              backgroundColor: '#333333DF', // Dark background for better readability
+              titleFont: { size: 14, weight: 'bold', color: '#FFFFFF' }, // Title font styling (date)
+              bodyFont: { size: 14, color: '#FFFFFF' }, // Body font styling (material ID, net, etc.)
+              borderWidth: 1, // Border width of the tooltip
+              cornerRadius: 5, // Rounded corners for a smoother look
+              padding: 12, // Padding inside the tooltip for better spacing
+              callbacks: {
+                title: (tooltipItems) => {
+                  const item = tooltipItems[0].dataset.data[tooltipItems[0].dataIndex];
+                  const tooltipData = graphData.data.find((data) => data.net === item);
+                  return tooltipData ? tooltipData.date : '';
+                },
+                label: (tooltipItem) => {
+                  const dataset = tooltipItem.dataset;
+                  const dataIndex = tooltipItem.dataIndex;
+                  const value = dataset.data[dataIndex];
 
-    console.log("Material IDs:", materialIds);
+                  const tooltipData = graphData.data.find(
+                    (data) => data.net === value && data.material_id === dataset.label
+                  );
 
-    // Create datasets for each material
-    const datasets = materialIds.map((materialId) => {
-      const materialData = graphData.data.filter(
-        (item) => item.material_id === materialId
-      );
+                  if (tooltipData) {
+                    return [
+                      `${tooltipData.material_id} - ${value}`,
+                      `0: ${tooltipData["0"]}`,
+                      `1: ${tooltipData["1"]}`,
+                      `2: ${tooltipData["2"]}`,
+                    ];
+                  }
 
-      return {
-        label: materialId,
-        data: labels.map((date) => {
-          const entry = materialData.find((item) => item.date === date);
-          return entry ? entry.net : 0; // Use 0 if no data for the date
-        }),
-        backgroundColor: materialColor[materialId] || "#000000", // Default color if missing
-        borderColor: materialColor[materialId] || "#000000",
-        tension: 0.4,
-        fill: false,
-      };
-    });
-
-    const data = {
-      labels,
-      datasets,
-    };
-
-    console.log("Final Chart Data:", data);
-
-    setGraphFormat({
-      data,
-      options: {
-        responsive: true,
-        scales: {
-          x: {
-            grid: {
-              display: true,
-              lineWidth: 1,
-            },
-            ticks: {
-              // color: "#FFFFFF80", // Sets tick labels color to white
-              font: {
-                size: 12,
+                  return '';
+                },
               },
             },
-            border: {
-              display: true,
-              color: "#FFFFFF", // Bottom axis baseline color
-            },
           },
-          y: {},
+          scales: {
+            x: { grid: { display: true, lineWidth: 1 }, ticks: { font: { size: 12 } }, border: { display: true, color: "#FFFFFF" } },
+            y: {},
+          },
         },
-      },
-    });
-  }, [graphData, graphData.data]);
+      });
+      setLoadingGraphData(false);
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [graphData]);
 
   useEffect(() => {
     const dateRange = fetchMonthDays(
@@ -333,9 +419,10 @@ function View() {
           letterSpacing: "0.5rem",
           textAlign: "center",
           marginBottom: "2rem",
+          marginTop: "2rem",
         }}
       >
-        <div className="">
+        <div className="" style={{animation: loadingGraphData || loadingMetricsData || loadingViewData ? "pulse 1.5s infinite ease-in-out" : "none",}}>
           {moment(selectedDate).format("MMMM YYYY").toUpperCase()}
         </div>
       </div>
@@ -345,11 +432,11 @@ function View() {
           display: "flex",
           justifyContent: "center",
           gap: "1rem",
-          marginBottom: "4rem",
+          marginBottom: "3rem",
         }}
       >
-        <div className="view-edit-ovens" style={styles.view_button}>
-          EXPAND
+        <div className="view-edit-ovens" style={styles.view_button} onClick={() => { setShowHideDetails(!showHideDetails) }}>
+          {showHideDetails ? "HIDE" : "SHOW"} DETAILS
         </div>
         <div className="view-edit-schedule" style={styles.view_button}>
           EDIT SCHEDULE
@@ -360,158 +447,314 @@ function View() {
       </div>
       <div
         className="view-monthly-attainment"
-        style={{ marginTop: "2rem", ...style_attainment_container }}
+        style={{ marginTop: "2rem", marginBottom: "2rem", ...style_attainment_container }}
       >
+
         <div
-          className="view-material-attainement"
+          className="view-material-attainment"
           style={{
             display: "flex",
             flexDirection: "column",
-            flexGrow: 0.5,
             gridColumn: "1",
             gridRow: "1",
-            justifyContent:
-              metricsData &&
-              metricsData["spools_created"] &&
-              Object.keys(metricsData["spools_created"]).length > 3
-                ? "space-between" // More than 3 items → evenly spaced
-                : "flex-start", // Few items → aligned at the top
-            gap: "0.5rem",
+            gap: "0.25rem",
+            justifyContent: "space-between",
+
           }}
         >
-          {/* {JSON.stringify(metricsData["spools_created"])} */}
-          {metricsData &&
-            metricsData["spools_created"] &&
+          {loadingMetricsData
+            ?
+            Array.from({ length: 8 }).map((_, idx) => (
+              <div key={idx} className="skeleton-bar" style={{ height: "9%" }} />
+            ))
+            : metricsData?.spools_created &&
             goalsData &&
-            Object.keys(metricsData["spools_created"]).map(
-              (material_id, idx) => (
+            Object.keys(metricsData.spools_created).map((material_id, idx) => (
+              <div
+                key={idx}
+                className="fade-in"
+                href={`#${material_id}`} // Optional for better accessibility
+                onClick={(e) => {
+                  e.preventDefault(); // Prevent default anchor behavior
+                  const targetElement = document.getElementById(material_id);
+                  if (targetElement) {
+                    targetElement.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }
+                }}
+                style={{
+                  display: "flex",
+                  border: "1px solid #D9D9D9",
+                  borderRadius: "0.5rem",
+                }}
+              >
                 <div
-                  key={idx}
-                  className=""
                   style={{
-                    display: "flex",
-                    border: "1px solid #D9D9D9",
-                    borderRadius: "0.5rem",
+                    borderTopLeftRadius: "0.5rem",
+                    borderBottomLeftRadius: "0.5rem",
+                    padding: "0.25rem 0.75rem",
+                    backgroundColor: materialColor[material_id] + "E6",
+                    color:
+                      material_id in materialColor && material_id !== "AO1"
+                        ? "#FFFFFF"
+                        : "#000000",
+                    letterSpacing: "1px",
+                    fontSize: "1.25rem",
+                    fontWeight: 400,
                   }}
                 >
-                  <div
-                    className=""
-                    style={{
-                      borderTopLeftRadius: "0.5rem",
-                      borderBottomLeftRadius: "0.5rem",
-                      padding: "0.25rem 0.75rem",
-                      backgroundColor: materialColor[material_id] + "E6",
-                      color:
-                        material_id in materialColor  && material_id !== "AO1"? "#FFFFFF" : "#000000",
-                      letterSpacing: "1px",
-                      fontSize: "1.25rem",
-                      fontWeight: 400,
-                    }}
-                  >
-                    {material_id}
-                  </div>
-                  {Object.keys(metricsData["spools_created"][material_id])
-                    .filter((status) => Number(status) === 0)
-                    .map((status, jdx) => (
-                      <div
-                        key={`${idx}-${jdx}`}
-                        className=""
-                        style={{
-                          flexBasis: `${
-                            ((metricsData["spools_created"][material_id][
-                              status
-                            ] |
-                              1) *
-                              100) /
-                            goalsData[material_id]
-                          }%`,
-                          //   border: "1px solid blue",
-                          textAlign: "right",
-                          backgroundColor: materialColor[material_id] + "E6",
-                          padding: "0.5rem",
-                          borderTopRightRadius: `${jdx === 0 ? 0.25 : 0}rem`,
-                          borderBottomRightRadius: `${jdx === 0 ? 0.25 : 0}rem`,
-                          color:                         
-                            material_id in materialColor  && material_id !== "AO1"? "#FFFFFF" : "#000000",
-                          // display: metricsData["spools_created"][material_id][status] === 5 || metricsData["spools_created"][material_id][status] === 6 ? "none" : "block",
-                          // display: : false,
-                          //   borderRadius: "0.5rem",
-                        }}
-                      >
-                        {metricsData["spools_created"][material_id][status]}
-                      </div>
-                    ))}
-                  <div
-                    className="goal"
-                    style={{
-                      textAlign: "right",
-                      flexGrow: 1,
-                      fontSize: "0.75rem",
-                      fontWeight: 600,
-                      textDecoration: "underline",
-                      verticalAlign: "center",
-                      padding: "0.5rem",
-                      color: "#BDBDBD",
-                    }}
-                  >
-                    {goalsData[material_id]}
-                  </div>
+                  {material_id}
                 </div>
-              )
-            )}
+                {Object.keys(metricsData.spools_created[material_id])
+                  .filter((status) => Number(status) === 0)
+                  .map((status, jdx) => (
+                    <div
+                      key={`${idx}-${jdx}`}
+                      style={{
+                        flexBasis: `${((metricsData.spools_created[material_id][status] |
+                          1) *
+                          100) /
+                          goalsData[material_id]
+                          }%`,
+                        textAlign: "right",
+                        backgroundColor: materialColor[material_id] + "E6",
+                        padding: "0.5rem",
+                        borderTopRightRadius: `${jdx === 0 ? 0.25 : 0}rem`,
+                        borderBottomRightRadius: `${jdx === 0 ? 0.25 : 0}rem`,
+                        color:
+                          material_id in materialColor && material_id !== "AO1"
+                            ? "#FFFFFF"
+                            : "#000000",
+                      }}
+                    >
+                      {metricsData.spools_created[material_id][status]}
+                    </div>
+                  ))}
+                <div
+                  className="goal"
+                  style={{
+                    textAlign: "right",
+                    flexGrow: 1,
+                    fontSize: "0.75rem",
+                    fontWeight: 600,
+                    textDecoration: "underline",
+                    padding: "0.5rem",
+                    color: "#BDBDBD",
+                  }}
+                >
+                  {goalsData[material_id]}
+                </div>
+              </div>
+            ))}
         </div>
         <div
           className="view-material-attainment-graph"
           style={{
             // border: "1px solid #3290FF",
-            border: "1px solid #cccccc",
             color: "#3290FF",
-            borderRadius: "0.5rem",
-            padding: "1rem",
             gridColumn: "2",
             gridRow: "1",
             overflow: "scroll",
           }}
         >
-          <div
-            className="component-graph"
-            style={{
-              // ...style_item_border,
-              gridColumn: "2 / 4",
-              gridRow: "2 / 5",
-              color: "#FFF",
-              // borderRight: "1px solid white",
-            }}
-          >
-            {graphData?.data &&
-              graphFormat?.options &&
-              graphFormat?.data &&
-              Object.keys(graphFormat.options)?.length &&
-              Object.keys(graphFormat.data)?.length && (
-                <Line options={graphFormat.options} data={graphFormat.data} />
-              )}
+          {loadingGraphData ? (
+            <div className="skeleton-bar" style={{ height: "100%" }} />
+          ) :
+            (<div
+              className="component-graph"
+              style={{
+                // ...style_item_border,
+                color: "#FFF",
+                height: "100%",
+                padding: "1rem",
+                border: "1px solid #cccccc",
+                borderRadius: "0.5rem",
+              }}
+            >
+              {graphData?.data &&
+                graphFormat?.options &&
+                graphFormat?.data &&
+                Object.keys(graphFormat.options)?.length &&
+                Object.keys(graphFormat.data)?.length && (
+                  <Line options={graphFormat.options} data={graphFormat.data} />
+                )}
+            </div>)}
 
-            {/* <pre>
-                {graphFormat.options && JSON.stringify(graphFormat.options, null, 4)}
-            </pre>
-            <pre>
-                {graphFormat.data && JSON.stringify(graphFormat.data, null, 4)} 
-            </pre> */}
-
-            {/* <pre className="">{metricsData && JSON.stringify(metricsData, null, 4)}</pre> */}
-            {/* <pre className="" style={{ overflowY: "scroll" }}>
-              {scheduleData && JSON.stringify(scheduleData, null, 4)}
-            </pre> */}
-
-            {/* TODO: this wont work if the date range is 0 days I think */}
-            {/* {graphData &&
-              Object.keys(graphData.options).length &&
-              Object.keys(graphData.data).length && (
-                <Line options={graphData.options} data={graphData.data} />
-              )} */}
-          </div>
         </div>
       </div>
+      {showHideDetails && <div
+        className="view-monthly-attainment"
+        style={{ marginTop: "4rem", ...style_attainment_container }}
+      > {loadingDetailsData ? <div className="skeleton-bar" style={{ height: "100%", gridColumn: "1/3", gridRow: "1" }} /> :
+        (
+          <div style={{
+            gridColumn: "1/3",
+            gridRow: "1",
+          }}>
+
+            {/* Counts (if it's a simple string) */}
+            {!loadingCountsData && countsData.counts && Array.isArray(detailsData.counts) && (
+              <div>
+                <table style={style_table}>
+                  <thead>
+                    <tr>
+                      {[
+                        "line_id",
+                        "material_id",
+                        "qc_spools",
+                        "qc_spools_adj",
+                        "scrap_spools",
+                        "scrap_spools_adj",
+                        "spool_len_const",
+                        "total_kg",
+                        "total_spools",
+                        "wip_spools",
+                        "wip_spools_adj",
+                      ].map((key) => (
+                        <th key={key} style={style_th}>
+                          {key.replace(/_/g, " ").replace(/(^\w{1})|(\s+\w{1})/g, (match) => match)}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {detailsData.counts.map((row, index) => (
+                      <tr key={index}>
+                        {[
+                          "line_id",
+                          "material_id",
+                          "qc_spools",
+                          "qc_spools_adj",
+                          "scrap_spools",
+                          "scrap_spools_adj",
+                          "spool_len_const",
+                          "total_kg",
+                          "total_spools",
+                          "wip_spools",
+                          "wip_spools_adj",
+                        ].map((key) => (
+                          <td key={key} style={style_th_td}>
+                            {row[key] !== null ? row[key] : "-"}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Efficiency Table */}
+            {detailsData.efficiency && Array.isArray(detailsData.efficiency) && (
+              <div>
+                <table style={{ ...style_table, borderRadius: "5rem" }}>
+                  <thead>
+                    <tr>
+                      {[
+                        "material_id",
+                        "max_runtime",
+                        "min_runtime",
+                        "avg_runtime",
+                        "time_0",
+                        "time_1",
+                        "time_2",
+                        "%_0",
+                        "%_1",
+                        "%_2",
+                        "max_meters_0",
+                        "min_meters_0",
+                        "avg_meters_0",
+                        "max_meters_1",
+                        "min_meters_1",
+                        "avg_meters_1",
+                        "max_meters_2",
+                        "min_meters_2",
+                        "avg_meters_2"
+                      ].map((key) => (
+                        <th key={key} style={style_th}>{key.replace(/_/g, " ")}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {detailsData.efficiency.map((row, index) => (
+                      <tr key={index}>
+                        {[
+                          "material_id",
+                          "max_runtime",
+                          "min_runtime",
+                          "avg_runtime",
+                          "time_0",
+                          "time_1",
+                          "time_2",
+                          "%_0",
+                          "%_1",
+                          "%_2",
+                          "max_meters_0",
+                          "min_meters_0",
+                          "avg_meters_0",
+                          "max_meters_1",
+                          "min_meters_1",
+                          "avg_meters_1",
+                          "max_meters_2",
+                          "min_meters_2",
+                          "avg_meters_2"
+                        ].map((key) => (
+                          <td key={key} style={style_th_td}>
+                            {row[key]}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Lot Mass Table */}
+            {detailsData.lot_mass && Array.isArray(detailsData.lot_mass) && (
+              <div>
+                <table style={style_table}>
+                  <thead>
+                    <tr>
+                      {[
+                        "feedstock_lot_id",
+                        "filament_lot",
+                        "available",
+                        "mass",
+                        "total_meters",
+                        "gs",
+                        "qc",
+                        "sc"
+                      ].map((key) => (
+                        <th key={key} style={style_th}>{key.replace(/_/g, " ")}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {detailsData.lot_mass.map((row, index) => (
+                      <tr key={index}>
+                        {[
+                          "feedstock_lot_id",
+                          "filament_lot",
+                          "available",
+                          "mass",
+                          "total_meters",
+                          "gs",
+                          "qc",
+                          "sc"
+                        ].map((key) => (
+                          <td key={key} style={style_th_td}>{row[key]}</td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+
+
+          </div>
+        )}</div>}
       <div
         className="view-monthly-schedule"
         style={{
@@ -520,323 +763,199 @@ function View() {
           ...style_schedule_container_header,
         }}
       >
-        <div
-          className=""
-          style={{ gridRow: "1", gridColumn: "1", ...style_days_of_the_week }}
-        >
-          S
-        </div>
-        <div
-          className=""
-          style={{ gridRow: "1", gridColumn: "2", ...style_days_of_the_week }}
-        >
-          M
-        </div>
-        <div
-          className=""
-          style={{ gridRow: "1", gridColumn: "3", ...style_days_of_the_week }}
-        >
-          T
-        </div>
-        <div
-          className=""
-          style={{ gridRow: "1", gridColumn: "4", ...style_days_of_the_week }}
-        >
-          W
-        </div>
-        <div
-          className=""
-          style={{ gridRow: "1", gridColumn: "5", ...style_days_of_the_week }}
-        >
-          T
-        </div>
-        <div
-          className=""
-          style={{ gridRow: "1", gridColumn: "6", ...style_days_of_the_week }}
-        >
-          F
-        </div>
-        <div
-          className=""
-          style={{ gridRow: "1", gridColumn: "7", ...style_days_of_the_week }}
-        >
-          S
-        </div>
+        {["S", "M", "T", "W", "T", "F", "S"].map((day, index) => (
+          <div
+            key={index}
+            style={{ gridRow: "1", gridColumn: index + 1, ...style_days_of_the_week }}
+          >
+            {day}
+          </div>
+        ))}
       </div>
       <div
         className="view-monthly-schedule"
         style={{
           color: "black",
-          marginTop: "2rem",
+          marginTop: "1rem",
           ...style_schedule_container_body,
         }}
       >
         {scheduleOutline &&
-          scheduleData &&
-          scheduleData.monthly_schedule &&
           scheduleOutline.map((week, xdx) =>
-            week.map((day, ydx) => {
-              // Parse day as UTC for consistency
-              const dayAsUTC = day && moment.utc(day).startOf("day");
-
-              const matchingDayData =
-                day &&
-                scheduleData.monthly_schedule.filter((entry) =>
-                  moment.utc(entry.date).startOf("day").isSame(dayAsUTC)
-                );
-
-              // Separate the data into two arrays based on shift
-              const shift1Data =
-                matchingDayData?.filter((entry) => entry.shift === 1) || [];
-              const shift2Data =
-                matchingDayData?.filter((entry) => entry.shift === 2) || [];
-              const shift3Data =
-                matchingDayData?.filter((entry) => entry.shift === 3) || [];
-
-              return (
+            week.map((day, ydx) => (
+              <div
+                key={`${xdx}-${ydx}`}
+                style={{
+                  gridRow: xdx + 1,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "1rem",
+                }}
+              >
+                {/* Day number */}
                 <div
+                  className=""
                   style={{
-                    gridRow: xdx + 1,
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "1.5rem",
+                    textAlign: "center",
+                    color: day ? "#aaaaaa" : "transparent",
+                    fontSize: "1.75rem",
                   }}
+                  onClick={() => setDateFormatStyle(!dateFormatStyle)}
                 >
-                  {/* Day number */}
-                  <div
-                    className=""
-                    style={{
-                      textAlign: "center",
-                      color: day ? "#aaaaaa" : "transparent",
-                      fontSize: "1.75rem",
-                    }}
-                  >
-                    {(day && moment(day).format("D")) || 0}
-                  </div>
+                  {day
+                    ? dateFormatStyle
+                      ? moment(day).format("D")
+                      : moment(day).format("YYYY-MM-DD")
+                    : 0}
+                </div>
 
-                  {/* Day cell with Shift 1 data */}
-                  <div
-                    className=""
-                    style={{
-                      gridRow: xdx + 1,
-                      gridColumn: ydx + 1,
-                      border: "1px solid #D9D9D9",
-                      borderRadius: "0.5rem",
-                      height: "20rem",
-                      padding: "0.5rem",
-                      overflowY: "auto", // Add scrolling if content overflows
-                    }}
-                  >
-                    {shift1Data.length > 0 ? (
+                {/* Schedule Data */}
+                {scheduleData?.monthly_schedule && viewData?.data ?
+                  (
+                    [1, 2, 3].map((shift) => {
+                      const shiftData = viewData?.data[day]?.[shift] || {};
+
+                      return (
+                        <div
+                          key={`${day}-${shift}`}
+                          className="shift-container"
+                          style={{
+                            gridColumn: ydx + 1,
+                            border: "1px solid #d9d9d9",
+                            borderRadius: "0.5rem",
+                            padding: "0.5rem",
+                            overflowY: "auto",
+                            backgroundColor:
+                              shift === 1
+                                ? "transparent"
+                                : shift === 2
+                                  ? "#F0F0F0"
+                                  : "#d9d9d9",
+                            flexBasis: "33%",
+                            display: "flex",
+                            flexDirection: "column",
+                            flexGrow: 1,
+                            gap: "0.25rem",
+                            minHeight: "21rem",
+                            fontSize: "1.125rem",
+                            opacity: shiftData ? 1 : 0, // Smooth fade-in when data loads
+                            transition: "opacity 0.5s ease-in-out",
+                          }}
+                        >
+                          {Object.keys(shiftData).length > 0 ? (
+                            Object.keys(shiftData).map((process) =>
+                              Object.keys(shiftData[process]).map((line_id) =>
+                                Object.keys(shiftData[process][line_id]).map((type) =>
+                                  Object.keys(shiftData[process][line_id][type]).map(
+                                    (material_id) => (
+                                      <div
+                                        key={material_id}
+                                        className="fade-in"
+                                        id={material_id}
+                                        style={{
+                                          borderRadius: "0.25rem",
+                                          color:
+                                            type === "unscheduled" &&
+                                              material_id in materialColor
+                                              ? materialColor[material_id]
+                                              : "#ffffff",
+                                          border: `1px solid ${material_id in materialColor
+                                            ? materialColor[material_id]
+                                            : "red"
+                                            }`,
+                                          backgroundColor:
+                                            type === "scheduled"
+                                              ? material_id in materialColor
+                                                ? materialColor[material_id]
+                                                : "transparent"
+                                              : material_id in materialColor
+                                                ? materialColor[material_id] + "70"
+                                                : "red",
+                                        }}
+                                      >
+                                        <div
+                                          className=""
+                                          style={{
+                                            display: "flex",
+                                            borderRadius: "inherit",
+                                            justifyContent: "space-between",
+                                            padding: "0.25rem 0.5rem",
+                                          }}
+                                        >
+                                          <div className="">{line_id} {material_id}</div>
+                                          <div className="">
+                                            {
+                                              shiftData[process][line_id][type][
+                                                material_id
+                                              ].produced
+                                            }{" "}
+                                            /{" "}
+                                            {
+                                              shiftData[process][line_id][type][
+                                                material_id
+                                              ].goal
+                                            }
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                          ) : (
+                            ""
+                          )}
+                        </div>
+                      );
+                    })
+                  ) : (
+                    // Skeleton Loader
+                    [1, 2, 3].map((shift) => (
                       <div
+                        key={`skeleton-${day}-${shift}`}
+                        className="skeleton-loader"
                         style={{
+                          gridColumn: ydx + 1,
+                          border: "1px solid #D9D9D9",
+                          borderRadius: "0.5rem",
+                          padding: "0.5rem",
+                          overflowY: "auto",
+                          flexBasis: "33%",
+                          backgroundColor:
+                            shift === 1
+                              ? "transparent"
+                              : shift === 2
+                                ? "#F0F0F0"
+                                : "#d9d9d9",
                           display: "flex",
                           flexDirection: "column",
-                          gap: "0.125rem",
-                          // border: "1px solid blue",
+                          gap: "0.5rem",
+                          minHeight: "21rem",
                         }}
                       >
-                        {compoundingData &&
-                          compoundingData.filter((compound) => (
-                              compound.shift === 1 &&
-                              moment(compound.date).format("YYYY-MM-DD") ===
-                              moment(day).format("YYYY-MM-DD")
-                            )).map((compound, idx) => (
-                            <div
-                              className=""
-                              key={idx}
-                              style={{
-                                borderRadius: "0.35rem",
-                                color: materialColor[translateCompounding[compound.material_id]],
-                                backgroundColor: materialColor[translateCompounding[compound.material_id]] + "20",
-                                // fontWeight: 600,
-                                fontSize: "1.25rem",
-                                display: "flex",
-                                overflow: "hidden",
-                                width: "100%",
-                                // backgroundColor:
-                                //   materialColor[translateCompounding[compound.material_id]],
-                                border: `1px solid ${materialColor[translateCompounding[compound.material_id]]}`,
-                                padding: "0.25rem 0.5rem",
-                                justifyContent: "space-between",
-                              }}
-                            >
-                              <div className="">
-                                CMP0 {compound.material_id}
-                              </div>
-                              <div className="">-</div>{" "}
-                              <div className="">{compound.total_mass}</div>
-                            </div>
-                          ))}
-
-                          <pre className=""> {day} {viewData && day && JSON.stringify(viewData[day], null, 2)}</pre>
-                          {/* {day && viewData && Object.keys(viewData?.[day]).map(()=> (
-                            <div className="">
-hi
-                            </div>
-                          ))} */}
-
-                        {scheduleData &&
-                          metricsData &&
-                          shift1Data.map((entry, idx) => (
-                            <div 
-                              key={idx}
-                              className=""
-                              style={{
-                                borderRadius: "0.35rem",
-                                color:
-                                  entry.material_id !== "AO1"
-                                    ? "#FFFFFF"
-                                    : "#000000",
-                                // fontWeight: 600,
-                                fontSize: "1.25rem",
-                                display: "flex",
-                                overflow: "hidden",
-                                width: "100%",
-                                backgroundColor:
-                                  materialColor[entry.material_id],
-                                padding: "0.25rem 0.5rem",
-                                justifyContent: "space-between",
-                              }}
-                            >
-                              {/* <pre>{JSON.stringify(entry.material_id, null, 4)}</pre> */}
-
-                              <div className="">
-                                {entry.line} {entry.material_id}
-                              </div>
-                              <div className="">-</div>
-                              <div className="">
-                                {entry.line !== "CMP0" && entry.line !== "CMP1"
-                                  ? metricsData.timeline?.[entry.material_id]?.[
-                                      day
-                                    ]?.["1"]?.[0]
-                                    ? metricsData.timeline?.[
-                                        entry.material_id
-                                      ]?.[day]?.["1"]?.[0]
-                                    : 0
-                                  : compoundingData.filter((compounding) => {
-                                      const formattedCompoundingDate = new Date(
-                                        compounding.date
-                                      )
-                                        .toISOString()
-                                        .split("T")[0];
-                                      const formattedEntryDate = new Date(
-                                        entry.date
-                                      )
-                                        .toISOString()
-                                        .split("T")[0];
-
-                                      // Get translated material ID for entry
-                                      const translatedMaterialId =
-                                        translateCompounding[
-                                          entry.material_id
-                                        ] || entry.material_id;
-
-                                      return (
-                                        formattedCompoundingDate ===
-                                          formattedEntryDate &&
-                                        translatedMaterialId ===
-                                          compounding.material_id
-                                      );
-                                    })[0]?.total_mass}{" "}
-                                /{" "}
-                                {goalsData &&
-                                  scheduleData &&
-                                  goalsData[entry.material_id] &&
-                                  Math.round(
-                                    goalsData[entry.material_id] /
-                                      (scheduleData?.freq[entry.material_id]
-                                        ? scheduleData?.freq[entry.material_id]
-                                        : 1)
-                                  )}
-                              </div>
-                            </div>
-                          ))}
-                      </div>
-                    ) : (
-                      ""
-                    )}
-                  </div>
-
-                  {/* Extra empty cell for Shift 2 data */}
-                  <div
-                    className=""
-                    style={{
-                      gridRow: xdx + 1,
-                      gridColumn: ydx + 1,
-                      border: "1px solid #D9D9D9",
-                      backgroundColor: "#D9D9D9",
-                      borderRadius: "0.5rem",
-                      height: "20rem",
-                      padding: "0.5rem",
-                      overflowY: "auto", // Add scrolling if content overflows
-                    }}
-                  >
-                    {shift2Data.length > 0 ? (
-                      <div
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: "0.125rem",
-                          // border: "1px solid blue",
-                        }}
-                      >
-                        {shift2Data.map((entry, idx) => (
-                          <div key={idx}>
-                            <div
-                              className=""
-                              style={{
-                                backgroundColor:
-                                  materialColor[entry.material_id],
-                                padding: "0.25rem 0.5rem",
-                                borderRadius: "0.25rem",
-                                color:
-                                  entry.material_id !== "AO1"
-                                    ? "#FFFFFF"
-                                    : "#000000",
-                                // fontWeight: 600,
-                                fontSize: "1.25rem",
-                                display: "flex",
-                                justifyContent: "space-between",
-                              }}
-                            >
-                              <div className="">
-                                {entry.line} {entry.material_id}
-                              </div>
-                              <div className="">-</div>
-
-                              <div className="">
-                                {metricsData.timeline?.[entry.material_id]?.[
-                                  day
-                                ]?.["1"]?.[0]
-                                  ? metricsData.timeline?.[entry.material_id]?.[
-                                      day
-                                    ]?.["1"]?.[0]
-                                  : 0}{" "}
-                                /{" "}
-                                {goalsData &&
-                                  scheduleData &&
-                                  goalsData[entry.material_id] &&
-                                  Math.round(
-                                    goalsData[entry.material_id] /
-                                      (scheduleData?.freq[entry.material_id]
-                                        ? scheduleData?.freq[entry.material_id]
-                                        : 1)
-                                  )}
-                              </div>
-                            </div>
-                          </div>
+                        {day && [...Array(6)].map((_, idx) => (
+                          <div
+                            key={`skeleton-item-${idx}`}
+                            className="skeleton-box"
+                            style={{
+                              height: "1.75rem",
+                              borderRadius: "0.25rem",
+                              background:
+                                "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
+                              backgroundSize: "200% 100%",
+                              animation: "skeleton-loading 1.5s infinite",
+                            }}
+                          ></div>
                         ))}
                       </div>
-                    ) : (
-                      ""
-                    )}
-                  </div>
-                </div>
-              );
-            })
+                    ))
+                  )}
+              </div>
+            ))
           )}
       </div>
+
     </div>
   );
 }

@@ -1,9 +1,10 @@
 // styles.js
 export const page_root = {
-    padding: "5vw",
+    padding: "2vw 5vw",
     color: "#000000",
     backgroundColor: "#FFFFFF",
-    height: "400vh",
+    // height: "800vh",
+    // width: "100vw"
 }
 
 export const view_button = {
@@ -13,3 +14,5 @@ export const view_button = {
     padding: "0.25rem 1rem",
     borderRadius: "0.25rem"
 }
+
+

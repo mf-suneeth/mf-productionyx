@@ -10,6 +10,7 @@ from collections import defaultdict
 from decimal import Decimal
 
 
+
 app = Flask(__name__)
 CORS(app)  # This will allow all domains
 
@@ -67,204 +68,251 @@ def validate_date(start_date, end_date):
     except ValueError:
         return jsonify({"error": "Invalid date format. Use YYYY-MM-DD."}), 400
 
+from flask import Flask, jsonify, request
+from flask_cors import CORS
+import mysql.connector as msc
+from datetime import datetime, timedelta
+from collections import defaultdict
+
+# Assuming fetch is a function that executes SQL queries and returns results
+
 @app.route("/api/view", methods=["GET"])
 def get_view():
-    """renders the monthly schedule & attainment on the /view page"""
-
+    """Renders the monthly schedule & attainment on the /view page"""
     start_date = request.args.get("start_date")
     end_date = request.args.get("end_date")
-
     
-    if not start_date or not end_date: 
-        return jsonify({"error" : "start_date and end_date are required"}), 400
-
+    if not start_date or not end_date:
+        return jsonify({"error": "start_date and end_date are required"}), 400
+    
     try:
-        start_date = datetime.strptime(start_date, "%Y-%m-%d")
-        end_date = datetime.strptime(end_date, "%Y-%m-%d")
+        start_date = datetime.strptime(start_date, '%Y-%m-%d')
+        end_date = datetime.strptime(end_date, '%Y-%m-%d')
     except ValueError:
         return jsonify({"error": "Invalid date format. Use YYYY-MM-DD."}), 400
+    
 
+    # Adjust end_date to be inclusive
+    end_date += timedelta(days=1)
 
     # GET PRODUCTION SCHEDULE
     query_production_schedule = """
-        SELECT 
-            DATE_FORMAT(date, '%Y-%m-%d') as date,
-            shift, 
-            line, 
-            material_id 
-        FROM 
-            production_schedule 
-        WHERE date >= %s
-            AND date < %s
+    SELECT
+        DATE_FORMAT(date, '%Y-%m-%d') as date,
+        shift,
+        line,
+        material_id
+    FROM
+        production_schedule
+    WHERE date >= %s
+    AND date < %s
     """
-
     params_production_schedule = (start_date, end_date)
     data_production_schedule = fetch(query_production_schedule, params_production_schedule)
 
     # GET PRODUCTION GOALS
     query_production_goals = """
-        SELECT 
-            DATE_FORMAT(date, '%Y-%m-%d') as date,
-            material_id,
-            goal
-        FROM 
-            production_goals
-        WHERE date >= %s
-            AND date < %s
-    """
+    SELECT
+        DATE_FORMAT(date, '%Y-%m-%d') as date,
+        material_id,
+        goal
+    FROM
+        production_goals
+    WHERE date >= %s
+    AND date < %s    
 
+    """
     params_production_goals = (start_date, end_date)
     data_production_goals = fetch(query_production_goals, params_production_goals)
 
     # GET COMPOUNDING DATA
     query_compounding_lots = """
-        SELECT 
-            DATE_FORMAT(created_at, '%Y-%m-%d') as date,
-            c.material_id,
-            SUM(c.mass) AS total_mass,
-            s.shift AS shift
-        FROM compounding_lots c
-        JOIN shift_translation s 
-            ON TIME(c.created_at) >= s.start_time 
-            AND (TIME(c.created_at) < s.end_time OR (s.shift = 3 AND s.end_time = '00:00:00'))
-        WHERE c.created_at >= %s 
-            AND c.created_at < %s
-        GROUP BY date, material_id, shift
-        ORDER BY date, shift
-    """
+    SELECT
+        DATE_FORMAT(created_at, '%Y-%m-%d') as date,
+        c.material_id,
+        SUM(c.mass) AS total_mass,
+        s.shift AS shift
+    FROM compounding_lots c
+    JOIN shift_translation s
+    ON TIME(c.created_at) >= s.start_time
+    AND (TIME(c.created_at) < s.end_time OR (s.shift = 3 AND s.end_time = '00:00:00'))
+    WHERE c.created_at >= %s
+    AND c.created_at < %s
+    GROUP BY date, material_id, shift
+    ORDER BY date, shift    
 
+    """
     params_compounding_lots = (start_date, end_date)
     data_compounding_lots = fetch(query_compounding_lots, params_compounding_lots)
 
-    # GET EXTRUSION DATA 
+    # GET EXTRUSION DATA
     query_extrusion_runs = """
-        SELECT
-            DATE_FORMAT(e.start_time, '%Y-%m-%d') as date,
-            line_id,
-            material_id,
-            COUNT(CASE WHEN spool_id IS NOT NULL and status = 0  THEN 1 ELSE 0 END) as gs,
-            s.shift as shift
-        FROM
-            extrusion_runs e
-        JOIN shift_translation s
-            ON TIME(e.start_time) >= s.start_time
-            AND (TIME(e.start_time) < s.end_time OR (s.shift = 3 AND s.end_time = '00:00:00'))
-        WHERE e.start_time >= %s 
-            AND e.start_time < %s 
-        GROUP BY
-            date, shift, line_id, material_id
-        ORDER BY
-            date, shift, line_id, material_id
-    """
+    SELECT
+        DATE_FORMAT(e.start_time, '%Y-%m-%d') as date,
+        line_id,
+        material_id,
+        COUNT(CASE WHEN spool_id IS NOT NULL and status = 0 THEN 1 ELSE 0 END) as gs,
+        s.shift as shift
+    FROM
+        extrusion_runs e
+    JOIN shift_translation s
+    ON TIME(e.start_time) >= s.start_time
+    AND (TIME(e.start_time) < s.end_time OR (s.shift = 3 AND s.end_time = '00:00:00'))
+    WHERE e.start_time >= %s
+    AND e.start_time < %s
+    GROUP BY
+        date, shift, line_id, material_id
+    ORDER BY
+        date, shift, line_id, material_id    
 
+    """
     params_extrusion_runs = (start_date, end_date)
     data_extrusion_runs = fetch(query_extrusion_runs, params_extrusion_runs)
 
-
-    # GET FIBER DATA 
+    # GET FIBER DATA
     query_production_spools = """
-        WITH line_runtime AS (
-            SELECT
-                DATE(l.start_time) AS run_date,
-                l.material_id,
-                l.line_id,
-                s.shift AS shift
-            FROM production_spools l
-            JOIN shift_translation s
-                ON TIME(l.start_time) >= s.start_time
-                AND (TIME(l.start_time) < s.end_time OR (s.shift = 3 AND s.end_time = '00:00:00'))
-        )
-        SELECT
-            DATE_FORMAT(run_date, '%Y-%m-%d') as date,
-            material_id,
-            shift,
-            COUNT(DISTINCT line_id) AS running_lines
-        FROM line_runtime
-        WHERE run_date >= %s AND run_date <= %s
-        GROUP BY run_date, material_id, shift
-        ORDER BY run_date, shift
-    """
+    WITH line_runtime AS (
+    SELECT
+        DATE(l.start_time) AS run_date,
+        l.material_id,
+        l.line_id,
+        s.shift AS shift
+    FROM production_spools l
+    JOIN shift_translation s
+    ON TIME(l.start_time) >= s.start_time
+    AND (TIME(l.start_time) < s.end_time OR (s.shift = 3 AND s.end_time = '00:00:00'))
+    )
+    SELECT
+        DATE_FORMAT(run_date, '%Y-%m-%d') as date,
+        material_id,
+        shift,
+        COUNT(DISTINCT line_id) AS running_lines
+    FROM line_runtime
+    WHERE run_date >= %s AND run_date < %s
+    GROUP BY run_date, material_id, shift
+    ORDER BY run_date, shift  
 
+    """
     params_production_spools = (start_date, end_date)
     data_production_spools = fetch(query_production_spools, params_production_spools)
 
-    net_data_json = {"schedule" : data_production_schedule, "goals" : data_production_goals ,"compounding" : data_compounding_lots, "extrusion" : data_extrusion_runs, "fiber":  data_production_spools}
-    # process tha data
+
+    # process fiber data ->
+    # transformed_data = []
+    
+    # for entry in data_production_schedule:
+    #     if entry["line"] == "FIBR":
+    #         materials = entry["material_id"].split()
+            
+    #         for material in materials:
+    #             match = re.match(r"(\d+)?([A-Z]+)", material)
+    #             if match:
+    #                 goal, material_id = match.groups()
+    #                 if goal:  # Only include if a numeric goal exists
+    #                     transformed_data.append({
+    #                         "date": entry["date"],
+    #                         "line": entry["line"],
+    #                         "material_id": material_id,
+    #                         "shift": entry["shift"],
+    #                         "goal": int(goal)
+    #                     })
+    
+    # data_production_schedule[:] = transformed_data
+
+    net_data_json = {
+        "schedule": data_production_schedule,
+        "goals": data_production_goals,
+        "compounding": data_compounding_lots,
+        "extrusion": data_extrusion_runs,
+        "fiber": data_production_spools
+    }
 
 
-    # Define the start and end of the month
-    start_date = datetime(2025, 1, 1)
-    end_date = datetime(2025, 1, 31)
 
-    # Initialize the structured dictionary
-    structured_data = defaultdict(lambda: {"compounding": {"scheduled": {}, "unscheduled": {}},
-                                        "extrusion": {"scheduled": {}, "unscheduled": {}},
-                                        "fiber": {"scheduled": {}, "unscheduled": {}}})
 
+    # Initialize structured dictionary
+    structured_data = defaultdict(lambda: defaultdict(lambda: {
+        "compounding": defaultdict(lambda: {"scheduled": {}, "unscheduled": {}}),
+        "extrusion": defaultdict(lambda: {"scheduled": {}, "unscheduled": {}}),
+        "fiber": defaultdict(lambda: {"scheduled": {}, "unscheduled": {}})
+    }))
+    
     # Convert schedule into an easy lookup
-    scheduled_map = defaultdict(set)
-    for entry in net_data_json["schedule"]:
-        scheduled_map[entry["date"]].add(entry["material_id"])
-
+    scheduled_map = defaultdict(lambda: defaultdict(set))
+    for entry in data_production_schedule:
+        scheduled_map[entry["date"]][entry["shift"]].add(entry["material_id"])
+    
     # Convert goals into an easy lookup
-    goal_map = {goal["material_id"]: goal["goal"] for goal in net_data_json["goals"]}
-
+    goal_map = {goal["material_id"]: goal["goal"] for goal in data_production_goals}
+    
     # Process compounding data
-    for entry in net_data_json["compounding"]:
-        date_key = datetime.strptime(entry["date"], "%Y-%m-%d").strftime("%Y-%m-%d")
-        material_id = entry["material_id"]
-        
-        compounding_type = "scheduled" if material_id in scheduled_map[entry["date"]] else "unscheduled"
-        structured_data[date_key]["compounding"][compounding_type][material_id] = {
+    for entry in data_compounding_lots:
+        date_key, shift, material_id = entry["date"], entry["shift"], entry["material_id"]
+        compounding_type = "scheduled" if material_id in scheduled_map[date_key][shift] else "unscheduled"
+        structured_data[date_key][shift]["compounding"]["CMP0"][compounding_type][material_id] = {
             "goal": goal_map.get(material_id, ""),
             "produced": entry["total_mass"],
-            "line": "CMP0",
-            "shift" : entry["shift"]
         }
-
+    
     # Process extrusion data
-    for entry in net_data_json["extrusion"]:
-        date_key = datetime.strptime(entry["date"], "%Y-%m-%d").strftime("%Y-%m-%d")
-        material_id = entry["material_id"]
-        
-        extrusion_type = "scheduled" if material_id in scheduled_map[entry["date"]] else "unscheduled"
-        structured_data[date_key]["extrusion"][extrusion_type][material_id] = {
+    for entry in data_extrusion_runs:
+        date_key, shift, line_id, material_id = entry["date"], entry["shift"], entry["line_id"], entry["material_id"]
+        extrusion_type = "scheduled" if material_id in scheduled_map[date_key][shift] else "unscheduled"
+        structured_data[date_key][shift]["extrusion"][line_id][extrusion_type][material_id] = {
             "goal": goal_map.get(material_id, ""),
             "produced": entry["gs"],
-            "line": entry["line_id"],
-            "shift" : entry["shift"]
+            "line_id": line_id
         }
-
-    # Process fiber data
-    for entry in net_data_json["fiber"]:
-        date_key = datetime.strptime(entry["date"], "%Y-%m-%d").strftime("%Y-%m-%d")
-        material_id = entry["material_id"]
-        
-        fiber_type = "scheduled" if material_id in scheduled_map[entry["date"]] else "unscheduled"
-        structured_data[date_key]["fiber"][fiber_type][material_id] = {
-            "goal": goal_map.get(material_id, ""),
-            "lines_running": entry["running_lines"],
-            "shift" : entry["shift"]
-        }
-
-    # Ensure all days of the month are included
-    current_date = start_date
-    while current_date <= end_date:
-        date_key = current_date.strftime("%Y-%m-%d")
-        if date_key not in structured_data:
-            structured_data[date_key] = {
-                "compounding": {"scheduled": {}, "unscheduled": {}},
-                "extrusion": {"scheduled": {}, "unscheduled": {}},
-                "fiber": {"scheduled": {}, "unscheduled": {}}
-            }
-        current_date += timedelta(days=1)
-
-    # Convert back to a normal dict for JSON output
-    # formatted_output = json.dumps(structured_data, indent=4)
-    # print(formatted_output)
     
-    return structured_data, 200
-   
+    # Process fiber data
+    for entry in data_production_spools:
+        date_key, shift, material_id = entry["date"], entry["shift"], entry["material_id"]
+        fiber_type = "scheduled" if material_id in scheduled_map[date_key][shift] else "unscheduled"
+        structured_data[date_key][shift]["fiber"]["FIBR"][fiber_type][material_id] = {
+            "goal": goal_map.get(material_id, ""),
+            "produced": entry["running_lines"],
+        }
+    
+    # Ensure all scheduled dates in the future are included
+    today_str = datetime.today().strftime('%Y-%m-%d')
+    for entry in data_production_schedule:
+        date_key, shift, line_id, material_id = entry["date"], entry["shift"], entry["line"], entry["material_id"]
+        if date_key >= today_str:
+            if shift not in structured_data[date_key]:
+                structured_data[date_key][shift] = {
+                    "compounding": {line_id: {"scheduled": {}, "unscheduled": {}}},
+                    "extrusion": {line_id : {"scheduled": {}, "unscheduled": {}}},
+                    "fiber": {line_id: {"scheduled": {}, "unscheduled": {}}}
+                }
+
+
+            if line_id in ["EX00", "EX01", "EX02", "EX03", "EX04"]:
+                if line_id not in structured_data[date_key][shift]["extrusion"]:
+                    structured_data[date_key][shift]["extrusion"][line_id] = {"scheduled": {}, "unscheduled": {}}
+                structured_data[date_key][shift]["extrusion"][line_id]["scheduled"].setdefault(material_id, {
+                    "goal": goal_map.get(material_id, ""),
+                    "produced": 0,
+                })
+            elif line_id in ["CMP0", "CMP1", "CMP2"]:
+                if line_id not in structured_data[date_key][shift]["compounding"]:
+                    structured_data[date_key][shift]["compounding"][line_id] = {"scheduled": {}, "unscheduled": {}}
+                structured_data[date_key][shift]["compounding"][line_id]["scheduled"].setdefault(material_id, {
+                    "goal": goal_map.get(material_id, ""),
+                    "produced": 0,
+                })
+
+            elif line_id in ["FIBR", "FIB2"]:
+                if line_id not in structured_data[date_key][shift]["fiber"]:
+                    structured_data[date_key][shift]["fiber"][line_id] = {"scheduled": {}, "unscheduled": {}}
+                structured_data[date_key][shift]["fiber"][line_id]["scheduled"].setdefault(material_id, {
+                    "goal": goal_map.get(material_id, ""),
+                    "produced": 0,
+                })
+    
+    return jsonify({"data": structured_data}), 200
+
+
+
 
 @app.route("/api/view/compounding", methods=["GET"])
 def get_view_compounding():
@@ -288,7 +336,7 @@ def get_view_compounding():
             ON TIME(c.created_at) >= s.start_time 
             AND (TIME(c.created_at) < s.end_time OR (s.shift = 3 AND s.end_time = '00:00:00'))
         WHERE c.created_at >= %s 
-            AND c.created_at < %s
+            AND c.created_at <= %s
         GROUP BY date, material_id, shift
         ORDER BY date DESC, shift ASC
     """
@@ -306,7 +354,7 @@ def get_view_graph():
     start_date = request.args.get("start_date")
     end_date = request.args.get("end_date")
 
-    # Validate and parse dates
+    # Validateoee and parse dates
     if not start_date or not end_date:
         return jsonify({"error": "start_date and end_date are required"}), 400
 
@@ -328,7 +376,7 @@ def get_view_graph():
         FROM 
             extrusion_runs
         WHERE 
-            start_time >= %s AND start_time < %s
+            start_time >= %s AND start_time <= %s
             AND line_id IN ('EX00', 'EX01', 'EX03', 'EX04')
         GROUP BY 
             date, 
@@ -450,7 +498,7 @@ def parse_fiber(req):
         label = "".join(filter(str.isalpha, fiber))  # Extract letters
 
         # Convert the count to an integer
-        count = int(count) if count else 0  # Handle case where there might be no number
+        count = int(count) if count else 0  # Handle  case where there might be no number
 
         # Update counts in the dictionary
         fibers_out[label] = fibers_out.get(label, 0) + count  # Initialize with 0 if key is not present
@@ -1825,6 +1873,453 @@ def get_monthly_analytics_graph():
     
 
     pass
+def calculate_spools_created(entry, net_spools_created):
+    """
+    Calculate and update the spool count based on the material_id and status.
+    """
+    material_id = entry['material_id']
+    status = int(entry['status']) if entry['status'] is not None else 2
+
+    # Initialize the material if it's not already in the dictionary
+    if material_id not in net_spools_created:
+        net_spools_created[material_id] = {
+            0: 0,
+            1: 0,
+            2: 0,
+            5: 0,
+            6: 0
+        }
+
+    # Increment the spool count based on the status
+    net_spools_created[material_id][status] += 1
+
+@app.route("/api/view/counts", methods=["GET"])
+def get_view_count_analytics():
+    """To pull in all lots, efficiency metrics for view"""
+    start_date = request.args.get("start_date")
+    end_date = request.args.get("end_date")
+    
+    if not start_date or not end_date:
+        return (
+            jsonify({"error:": "both start_date and end_date parameters are required"}),
+            400,
+        )
+    
+    try:
+        query_spool_counts = """
+            WITH all_spools AS (
+                SELECT
+                    status,
+                    extrusion_runs.material_id,
+                    line_id,
+                    meters_scanned,
+                    meters_on_spool,
+                    failure_mode,
+                    start_time,
+                    avg_cs_xy
+                FROM extrusion_runs
+                LEFT JOIN material_specs
+                    ON extrusion_runs.material_id = material_specs.material_id
+                WHERE
+                    DATE(start_time) >= %s
+                    and DATE(start_time) < %s
+                    and meters_scanned < (spool_length_min + 150)
+                    and line_id != 'EX02'
+            ),
+            spool_volume as (
+                select
+                    all_spools.material_id,
+                    round(avg(avg_cs_xy * meters_on_spool) / 100, 2) as spool_volume_avg
+                from all_spools
+                left join material_specs
+                on all_spools.material_id = material_specs.material_id
+                where all_spools.material_id in ("820", "G16")
+                group by 1
+            ),
+            total_spools AS (
+                SELECT
+                    all_spools.material_id,
+                    line_id,
+                    count(*) AS total_spools,
+                    round(
+                        count(*)
+                        * material_specs.density
+                        * spool_volume.spool_volume_avg
+                        / 10
+                    , 2) as total_kg
+                FROM all_spools
+                LEFT JOIN material_specs
+                ON all_spools.material_id = material_specs.material_id
+                LEFT JOIN spool_volume
+                ON all_spools.material_id = spool_volume.material_id
+                GROUP BY all_spools.material_id, line_id, spool_volume.spool_volume_avg
+            ),
+            wip_spools AS (
+                SELECT
+                    all_spools.material_id,
+                    line_id,
+                    count(*) AS wip_spools,
+                    ROUND(SUM(meters_scanned) / material_specs.spool_length_min) AS wip_spools_adj,
+                    material_specs.spool_length_min
+                FROM all_spools
+                LEFT JOIN material_specs
+                    ON all_spools.material_id = material_specs.material_id
+                WHERE
+                    status = "000"
+                GROUP BY material_id, line_id
+            ),
+            qc_spools AS (
+                SELECT
+                    all_spools.material_id,
+                    line_id,
+                    count(*) AS qc_spools,
+                    ROUND(SUM(meters_scanned) / material_specs.spool_length_min) AS qc_spools_adj
+                FROM all_spools
+                LEFT JOIN material_specs
+                    ON all_spools.material_id = material_specs.material_id
+                WHERE
+                    status = "001"
+                GROUP BY material_id, spool_length_min, line_id
+            ),
+            scrap_spools AS (
+                SELECT
+                    all_spools.material_id,
+                    line_id,
+                    count(*) AS scrap_spools,
+                    ROUND(SUM(meters_scanned) / material_specs.spool_length_min) AS scrap_spools_adj
+                FROM all_spools
+                LEFT JOIN material_specs
+                    ON all_spools.material_id = material_specs.material_id
+                WHERE
+                    status = "002"
+                GROUP BY all_spools.material_id, spool_length_min, line_id
+            )
+            SELECT
+                total_spools.material_id,
+                total_spools.line_id,
+                spool_length_min as spool_len_const,
+                COALESCE(total_spools, 0) as total_spools,
+                total_kg,
+                COALESCE(wip_spools, 0) as wip_spools,
+                COALESCE(wip_spools_adj, 0) as wip_spools_adj,
+                COALESCE(qc_spools, 0) as qc_spools,
+                COALESCE(qc_spools_adj, 0) as qc_spools_adj,
+                COALESCE(scrap_spools, 0) as scrap_spools,
+                COALESCE(scrap_spools_adj, 0) as scrap_spools_adj
+            FROM total_spools
+            LEFT JOIN wip_spools
+                ON total_spools.material_id = wip_spools.material_id
+                AND total_spools.line_id = wip_spools.line_id
+            LEFT JOIN qc_spools
+                ON total_spools.material_id = qc_spools.material_id
+                AND total_spools.line_id = qc_spools.line_id
+            LEFT JOIN scrap_spools
+                ON total_spools.material_id = scrap_spools.material_id
+                AND total_spools.line_id = scrap_spools.line_id
+            ORDER BY total_spools DESC
+        """
+
+        
+        params_spool_counts = (
+            start_date, end_date
+        )
+
+        results_spool_counts = fetch(query_spool_counts, params_spool_counts)
+
+
+
+        # Helper function to calculate the spools created
+        net_spools_created = {}
+
+        # Process the rows and calculate spools created
+        
+        return jsonify({"counts": results_spool_counts})
+    
+    except Exception as e:
+        print(f"Error: {e}")
+        return jsonify({"error": "An unknown error occurred", "details": str(e)}), 500
+
+    
+
+
+@app.route("/api/view/details", methods=["GET"])
+def get_view_lot_analytics():
+    """To pull in all lots, efficiency metrics for view"""
+    start_date = request.args.get("start_date")
+    end_date = request.args.get("end_date")
+    
+    if not start_date or not end_date:
+        return (
+            jsonify({"error:": "both start_date and end_date parameters are required"}),
+            400,
+        )
+    
+    try:
+        # Prepare the query and parameters
+        query_lots_mass = """
+            SELECT
+                flc.feedstock_lot_id,
+                er.filament_lot,
+                il.mass AS available, 
+                COALESCE(SUM(CAST(er.notes AS DECIMAL(10,2))) / 1000, 0.0) AS mass,
+                SUM(er.meters_on_spool) AS total_meters,
+                ROUND(SUM(CASE WHEN er.status = 0 THEN er.meters_on_spool ELSE 0 END) / NULLIF(SUM(er.meters_on_spool), 0), 6) AS gs,
+                ROUND(SUM(CASE WHEN er.status = 1 THEN er.meters_on_spool ELSE 0 END) / NULLIF(SUM(er.meters_on_spool), 0), 6) AS qc,
+                ROUND(SUM(CASE WHEN er.status = 2 THEN er.meters_on_spool ELSE 0 END) / NULLIF(SUM(er.meters_on_spool), 0), 6) AS sc
+            FROM extrusion_runs AS er
+            JOIN filament_lot_changes AS flc ON flc.filament_lot = er.filament_lot
+            JOIN incoming_lots AS il ON flc.feedstock_lot_id = il.lot_id  
+            WHERE er.start_time >= %s
+            AND er.start_time <= %s
+            GROUP BY flc.feedstock_lot_id, er.filament_lot, il.mass
+            ORDER BY flc.feedstock_lot_id, er.filament_lot;
+        """
+        
+        params_lots_mass = (
+            start_date, end_date
+        )
+
+        # Use fetch function to get the data
+        results_lots_mass = fetch(query_lots_mass, params_lots_mass)
+
+        query_efficiency = """
+            SELECT
+                material_id,
+                TIME_FORMAT(SEC_TO_TIME(COALESCE(MAX(runtime_seconds), 0)), %s) AS max_runtime,
+                TIME_FORMAT(SEC_TO_TIME(COALESCE(MIN(runtime_seconds), 0)), %s) AS min_runtime,
+                TIME_FORMAT(SEC_TO_TIME(COALESCE(AVG(runtime_seconds), 0)), %s) AS avg_runtime,
+                TIME_FORMAT(SEC_TO_TIME(COALESCE(SUM(CASE WHEN status = 0 THEN runtime_seconds ELSE 0 END), 0)), %s) AS time_0,
+                TIME_FORMAT(SEC_TO_TIME(COALESCE(SUM(CASE WHEN status = 1 THEN runtime_seconds ELSE 0 END), 0)), %s) AS time_1,
+                TIME_FORMAT(SEC_TO_TIME(COALESCE(SUM(CASE WHEN status = 2 THEN runtime_seconds ELSE 0 END), 0)), %s) AS time_2,
+                ROUND(
+                    COALESCE(SUM(CASE WHEN status = 0 THEN runtime_seconds ELSE 0 END) / NULLIF(SUM(runtime_seconds), 0), 0) * 100, 
+                    2
+                ) AS `%_0`,
+                ROUND(
+                    COALESCE(SUM(CASE WHEN status = 1 THEN runtime_seconds ELSE 0 END) / NULLIF(SUM(runtime_seconds), 0), 0) * 100, 
+                    2
+                ) AS `%_1`,
+                ROUND(
+                    COALESCE(SUM(CASE WHEN status = 2 THEN runtime_seconds ELSE 0 END) / NULLIF(SUM(runtime_seconds), 0), 0) * 100, 
+                    2
+                ) AS `%_2`,
+                COALESCE(MAX(CASE WHEN status = 0 THEN meters_on_spool ELSE NULL END), 0) AS max_meters_0,
+                COALESCE(MIN(CASE WHEN status = 0 THEN meters_on_spool ELSE NULL END), 0) AS min_meters_0,
+                COALESCE(AVG(CASE WHEN status = 0 THEN meters_on_spool ELSE NULL END), 0) AS avg_meters_0,
+                COALESCE(MAX(CASE WHEN status = 1 THEN meters_on_spool ELSE NULL END), 0) AS max_meters_1,
+                COALESCE(MIN(CASE WHEN status = 1 THEN meters_on_spool ELSE NULL END), 0) AS min_meters_1,
+                COALESCE(AVG(CASE WHEN status = 1 THEN meters_on_spool ELSE NULL END), 0) AS avg_meters_1,
+                COALESCE(MAX(CASE WHEN status = 2 THEN meters_on_spool ELSE NULL END), 0) AS max_meters_2,
+                COALESCE(MIN(CASE WHEN status = 2 THEN meters_on_spool ELSE NULL END), 0) AS min_meters_2,
+                COALESCE(AVG(CASE WHEN status = 2 THEN meters_on_spool ELSE NULL END), 0) AS avg_meters_2
+            FROM (
+                SELECT
+                    material_id,
+                    status,
+                    COALESCE(TIME_TO_SEC(logging_time), 0) AS runtime_seconds,
+                    COALESCE(meters_on_spool, 0) AS meters_on_spool
+                FROM extrusion_runs
+                WHERE start_time >= %s
+                AND start_time <= %s
+            ) AS er
+            GROUP BY material_id
+        """
+
+        params_efficiency = (
+            '%H:%i:%s','%H:%i:%s','%H:%i:%s','%H:%i:%s','%H:%i:%s','%H:%i:%s', start_date, end_date
+        )
+
+        results_efficiency = fetch(query_efficiency, params_efficiency)
+
+
+        query_spool_counts = """
+            WITH all_spools AS (
+                SELECT
+                    status,
+                    extrusion_runs.material_id,
+                    line_id,
+                    meters_scanned,
+                    meters_on_spool,
+                    failure_mode,
+                    start_time,
+                    avg_cs_xy
+                FROM extrusion_runs
+                LEFT JOIN material_specs
+                    ON extrusion_runs.material_id = material_specs.material_id
+                WHERE
+                    DATE(start_time) >= %s
+                    and DATE(start_time) < %s
+                    and meters_scanned < (spool_length_min + 150)
+                    and line_id != 'EX02'
+            ),
+            spool_volume as (
+                select
+                    all_spools.material_id,
+                    round(avg(avg_cs_xy * meters_on_spool) / 100, 2) as spool_volume_avg
+                from all_spools
+                left join material_specs
+                on all_spools.material_id = material_specs.material_id
+                where all_spools.material_id in ("820", "G16")
+                group by 1
+            ),
+            total_spools AS (
+                SELECT
+                    all_spools.material_id,
+                    line_id,
+                    count(*) AS total_spools,
+                    round(
+                        count(*)
+                        * material_specs.density
+                        * spool_volume.spool_volume_avg
+                        / 10
+                    , 2) as total_kg
+                FROM all_spools
+                LEFT JOIN material_specs
+                ON all_spools.material_id = material_specs.material_id
+                LEFT JOIN spool_volume
+                ON all_spools.material_id = spool_volume.material_id
+                GROUP BY all_spools.material_id, line_id, spool_volume.spool_volume_avg
+            ),
+            wip_spools AS (
+                SELECT
+                    all_spools.material_id,
+                    line_id,
+                    count(*) AS wip_spools,
+                    ROUND(SUM(meters_scanned) / material_specs.spool_length_min) AS wip_spools_adj,
+                    material_specs.spool_length_min
+                FROM all_spools
+                LEFT JOIN material_specs
+                    ON all_spools.material_id = material_specs.material_id
+                WHERE
+                    status = "000"
+                GROUP BY material_id, line_id
+            ),
+            qc_spools AS (
+                SELECT
+                    all_spools.material_id,
+                    line_id,
+                    count(*) AS qc_spools,
+                    ROUND(SUM(meters_scanned) / material_specs.spool_length_min) AS qc_spools_adj
+                FROM all_spools
+                LEFT JOIN material_specs
+                    ON all_spools.material_id = material_specs.material_id
+                WHERE
+                    status = "001"
+                GROUP BY material_id, spool_length_min, line_id
+            ),
+            scrap_spools AS (
+                SELECT
+                    all_spools.material_id,
+                    line_id,
+                    count(*) AS scrap_spools,
+                    ROUND(SUM(meters_scanned) / material_specs.spool_length_min) AS scrap_spools_adj
+                FROM all_spools
+                LEFT JOIN material_specs
+                    ON all_spools.material_id = material_specs.material_id
+                WHERE
+                    status = "002"
+                GROUP BY all_spools.material_id, spool_length_min, line_id
+            )
+            SELECT
+                total_spools.material_id,
+                total_spools.line_id,
+                spool_length_min as spool_len_const,
+                COALESCE(total_spools, 0) as total_spools,
+                total_kg,
+                COALESCE(wip_spools, 0) as wip_spools,
+                COALESCE(wip_spools_adj, 0) as wip_spools_adj,
+                COALESCE(qc_spools, 0) as qc_spools,
+                COALESCE(qc_spools_adj, 0) as qc_spools_adj,
+                COALESCE(scrap_spools, 0) as scrap_spools,
+                COALESCE(scrap_spools_adj, 0) as scrap_spools_adj
+            FROM total_spools
+            LEFT JOIN wip_spools
+                ON total_spools.material_id = wip_spools.material_id
+                AND total_spools.line_id = wip_spools.line_id
+            LEFT JOIN qc_spools
+                ON total_spools.material_id = qc_spools.material_id
+                AND total_spools.line_id = qc_spools.line_id
+            LEFT JOIN scrap_spools
+                ON total_spools.material_id = scrap_spools.material_id
+                AND total_spools.line_id = scrap_spools.line_id
+            ORDER BY total_spools DESC
+        """
+
+        
+        params_spool_counts = (
+            start_date, end_date
+        )
+
+        results_spool_counts = fetch(query_spool_counts, params_spool_counts)
+
+
+
+        # Helper function to calculate the spools created
+        net_spools_created = {}
+
+        # Process the rows and calculate spools created
+        
+        return jsonify({"lot_mass" : results_lots_mass, "efficiency" : results_efficiency, "counts": results_spool_counts})
+    
+    except Exception as e:
+        print(f"Error: {e}")
+        return jsonify({"error": "An unknown error occurred", "details": str(e)}), 500
+
+
+
+
+@app.route("/api/view/metrics", methods=["GET"])
+def get_view_metrics_analytics():
+    """To pull in all time series graphs about extrusion."""
+    start_date = request.args.get("start_date")
+    end_date = request.args.get("end_date")
+    
+    if not start_date or not end_date:
+        return (
+            jsonify({"error:": "both start_date and end_date parameters are required"}),
+            400,
+        )
+    
+    try:
+        # Prepare the query and parameters
+        query_production_spools = """
+            SELECT spool_id, DATE_FORMAT(logging_time, %s) AS logging_time,
+                   DATE_FORMAT(run_time, %s) AS run_time, failure_mode, status, 
+                   DATE_FORMAT(start_time, %s) AS start_time, meters_on_spool,
+                   meters_scanned, material_id, line_id
+            FROM extrusion_runs
+            WHERE start_time >= %s AND start_time <= %s
+            ORDER BY start_time
+        """
+        
+        params_production_spools = (
+            "%H:%i:%s", "%H:%i:%s", "%Y-%m-%d %H:%i:%s", start_date, end_date
+        )
+
+        # Use fetch function to get the data
+        rows = fetch(query_production_spools, params_production_spools)
+
+        # Shift times as provided
+        translate_shift = {
+            "1": {"start_time": "07:00:00.000000", "end_time": "15:00:00.000000", "duration": 8, "date_offset": 0},
+            "2": {"start_time": "15:00:00.000000", "end_time": "23:00:00.000000", "duration": 8, "date_offset": 0},
+            "3": {"start_time": "23:00:00.000000", "end_time": "07:00:00.000000", "duration": 8, "date_offset": 1},
+        }
+
+        # Helper function to calculate the spools created
+        net_spools_created = {}
+
+        # Process the rows and calculate spools created
+        for entry in rows:
+            calculate_spools_created(entry, net_spools_created)
+
+        return jsonify(
+            {"spools_created": net_spools_created}
+        )
+    
+    except Exception as e:
+        print(f"Error: {e}")
+        return jsonify({"error": "An unknown error occurred", "details": str(e)}), 500
 
 @app.route("/api/metrics/extruder", methods=["GET"])
 def get_runtime_analytics():
@@ -1975,10 +2470,6 @@ def get_runtime_analytics():
                     6 : 0
                 }
                 net_spools_created[material_id][status] = 1
-        
-        
-        
-
 
             # If the date falls within the requested range, process
             if start_date <= start_time <= end_date:
