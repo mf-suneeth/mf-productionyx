@@ -106,7 +106,7 @@ function App() {
           />
           <Route path="/enter" element={<Schedule />} />
           <Route path="/show-month" element={<ShowMonth />} />
-          {/* <Route path="/overview" element={<Overview />} /> */}
+          <Route path="/overview" element={<Overview />} />
           <Route path="/production" element={<Production />} />
           <Route path="/extrusion" element={<Extrusion />} />
           <Route path="/view" element={<View />} />

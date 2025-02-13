@@ -592,7 +592,61 @@ function View() {
           }}>
 
             {/* Counts (if it's a simple string) */}
-            {!loadingCountsData && countsData.counts && Array.isArray(detailsData.counts) && (
+            {!loadingCountsData  ?  (
+              countsData.counts && Array.isArray(countsData.counts) && (
+              <div>
+                <table className="fade-in" style={style_table}>
+                  <thead>
+                    <tr>
+                      {[
+                        "shift_date",
+                        "shift",
+                        "line_id",
+                        "material_id",
+                        "qc_spools",
+                        "qc_spools_adj",
+                        "scrap_spools",
+                        "scrap_spools_adj",
+                        "total_kg",
+                        "total_spools",
+                        "wip_spools",
+                        "wip_spools_adj"
+                      ].map((key) => (
+                        <th key={key} style={style_th}>
+                          {key.replace(/_/g, " ").replace(/(^\w{1})|(\s+\w{1})/g, (match) => match)}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {countsData.counts.map((row, index) => (
+                      <tr key={index}>
+                        {[
+                          "shift_date",
+                          "shift",
+                          "line_id",
+                          "material_id",
+                          "qc_spools",
+                          "qc_spools_adj",
+                          "scrap_spools",
+                          "scrap_spools_adj",
+                          "total_kg",
+                          "total_spools",
+                          "wip_spools",
+                          "wip_spools_adj"
+                        ].map((key) => (
+                          <td key={key} style={style_th_td}>
+                            {row[key] !== null ? row[key] : "-"}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )) :<div style={{animation: "pulse 1.5s infinite ease-in-out", marginBottom :"0.5rem"}}>loading counts data...</div>}
+            {!loadingDetailsData  ?  (
+              detailsData.counts && Array.isArray(detailsData.counts) && (
               <div>
                 <table style={style_table}>
                   <thead>
@@ -604,11 +658,13 @@ function View() {
                         "qc_spools_adj",
                         "scrap_spools",
                         "scrap_spools_adj",
+                        "shift",
+                        "shift_date",
                         "spool_len_const",
                         "total_kg",
                         "total_spools",
                         "wip_spools",
-                        "wip_spools_adj",
+                        "wip_spools_adj"
                       ].map((key) => (
                         <th key={key} style={style_th}>
                           {key.replace(/_/g, " ").replace(/(^\w{1})|(\s+\w{1})/g, (match) => match)}
@@ -626,11 +682,13 @@ function View() {
                           "qc_spools_adj",
                           "scrap_spools",
                           "scrap_spools_adj",
+                          "shift",
+                          "shift_date",
                           "spool_len_const",
                           "total_kg",
                           "total_spools",
                           "wip_spools",
-                          "wip_spools_adj",
+                          "wip_spools_adj"
                         ].map((key) => (
                           <td key={key} style={style_th_td}>
                             {row[key] !== null ? row[key] : "-"}
@@ -641,12 +699,11 @@ function View() {
                   </tbody>
                 </table>
               </div>
-            )}
-
+            )) :<div style={{animation: "pulse 1.5s infinite ease-in-out"}}>loading aggregated counts data...</div>}
             {/* Efficiency Table */}
             {detailsData.efficiency && Array.isArray(detailsData.efficiency) && (
               <div>
-                <table style={{ ...style_table, borderRadius: "5rem" }}>
+                <table className="fade-in" style={{ ...style_table, borderRadius: "5rem" }}>
                   <thead>
                     <tr>
                       {[
@@ -712,7 +769,7 @@ function View() {
             {/* Lot Mass Table */}
             {detailsData.lot_mass && Array.isArray(detailsData.lot_mass) && (
               <div>
-                <table style={style_table}>
+                <table className="fade-in" style={style_table}>
                   <thead>
                     <tr>
                       {[
@@ -891,9 +948,9 @@ function View() {
                                             }{" "}
                                             /{" "}
                                             {
-                                              shiftData[process][line_id][type][
+                                              Math.ceil(shiftData[process][line_id][type][
                                                 material_id
-                                              ].goal
+                                              ].goal / (material_id in scheduleData?.fixed ? scheduleData?.fixed?.[material_id] : 1))
                                             }
                                           </div>
                                         </div>

@@ -26,7 +26,7 @@ export const materialColor = {
     "174" : "#497eb8",
     "7FP" : "#497eb8",
     "820" : "#ffe100",
-    "AO1" : "#e9edf7",
+    "AO1" : "#c4d5ff",
     "A20" : "#fd6e4c",
     "D20" : "#7ec193",
     "DTS" : "#7ec193",

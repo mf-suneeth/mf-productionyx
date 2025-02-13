@@ -301,13 +301,22 @@ def get_view():
                     "produced": 0,
                 })
 
-            elif line_id in ["FIBR", "FIB2"]:
+            elif line_id in ["FIBR", "FIB2", "FIB3"]:
+                # need additional logic to parse out the  fiber details -->
+
+                
                 if line_id not in structured_data[date_key][shift]["fiber"]:
                     structured_data[date_key][shift]["fiber"][line_id] = {"scheduled": {}, "unscheduled": {}}
-                structured_data[date_key][shift]["fiber"][line_id]["scheduled"].setdefault(material_id, {
-                    "goal": goal_map.get(material_id, ""),
-                    "produced": 0,
-                })
+
+                if material_id and len(material_id) >  3:
+                    material_id = parse_fiber(material_id)
+                
+                for material in material_id:
+                    structured_data[date_key][shift]["fiber"][line_id]["scheduled"].setdefault(material, {
+                        "goal": goal_map.get(material, ""),
+                        "produced": 0,
+                    })
+                # print("goofy", material_id)                 
     
     return jsonify({"data": structured_data}), 200
 
@@ -1907,121 +1916,161 @@ def get_view_count_analytics():
     
     try:
         query_spool_counts = """
-            WITH all_spools AS (
+            WITH shift_intervals AS (
                 SELECT
-                    status,
-                    extrusion_runs.material_id,
-                    line_id,
-                    meters_scanned,
-                    meters_on_spool,
-                    failure_mode,
+                    idx,
+                    shift,
                     start_time,
-                    avg_cs_xy
+                    end_time,
+                    date_offset
+                FROM shift_translation
+            ),
+            all_spools AS (
+                SELECT
+                    extrusion_runs.status,
+                    extrusion_runs.material_id,
+                    extrusion_runs.line_id,
+                    extrusion_runs.meters_scanned,
+                    extrusion_runs.meters_on_spool,
+                    extrusion_runs.failure_mode,
+                    extrusion_runs.start_time,
+                    DATE(extrusion_runs.start_time) AS production_date,
+                    TIME(extrusion_runs.start_time) AS production_time,
+                    extrusion_runs.avg_cs_xy
                 FROM extrusion_runs
                 LEFT JOIN material_specs
                     ON extrusion_runs.material_id = material_specs.material_id
                 WHERE
-                    DATE(start_time) >= %s
-                    and DATE(start_time) < %s
-                    and meters_scanned < (spool_length_min + 150)
-                    and line_id != 'EX02'
+                    DATE(extrusion_runs.start_time) >= %s
+                    AND DATE(extrusion_runs.start_time) < %s
+                    AND extrusion_runs.meters_scanned < (material_specs.spool_length_min + 150)
+                    AND extrusion_runs.line_id != 'EX02'
             ),
-            spool_volume as (
-                select
-                    all_spools.material_id,
-                    round(avg(avg_cs_xy * meters_on_spool) / 100, 2) as spool_volume_avg
-                from all_spools
-                left join material_specs
-                on all_spools.material_id = material_specs.material_id
-                where all_spools.material_id in ("820", "G16")
-                group by 1
+            spool_shifted AS (
+                SELECT
+                    a.*,
+                    s.shift,
+                    DATE_ADD(a.production_date, INTERVAL s.date_offset DAY) AS shift_date
+                FROM all_spools a
+                JOIN shift_intervals s
+                    ON a.production_time >= s.start_time AND 
+                    (s.end_time > s.start_time AND a.production_time < s.end_time
+                        OR s.end_time < s.start_time AND (a.production_time < s.end_time OR a.production_time >= s.start_time))
+            ),
+            spool_volume AS (
+                SELECT
+                    spool_shifted.material_id,
+                    spool_shifted.shift_date,
+                    spool_shifted.shift,
+                    ROUND(AVG(spool_shifted.avg_cs_xy * spool_shifted.meters_on_spool) / 100, 2) AS spool_volume_avg
+                FROM spool_shifted
+                WHERE spool_shifted.material_id IN ('820', 'G16')
+                GROUP BY spool_shifted.material_id, spool_shifted.shift_date, spool_shifted.shift
             ),
             total_spools AS (
                 SELECT
-                    all_spools.material_id,
-                    line_id,
-                    count(*) AS total_spools,
-                    round(
-                        count(*)
-                        * material_specs.density
-                        * spool_volume.spool_volume_avg
-                        / 10
-                    , 2) as total_kg
-                FROM all_spools
+                    spool_shifted.material_id,
+                    spool_shifted.line_id,
+                    spool_shifted.shift_date,
+                    spool_shifted.shift,
+                    COUNT(*) AS total_spools,
+                    ROUND(
+                        COUNT(*) * material_specs.density * spool_volume.spool_volume_avg / 10,
+                    2) AS total_kg
+                FROM spool_shifted
                 LEFT JOIN material_specs
-                ON all_spools.material_id = material_specs.material_id
+                    ON spool_shifted.material_id = material_specs.material_id
                 LEFT JOIN spool_volume
-                ON all_spools.material_id = spool_volume.material_id
-                GROUP BY all_spools.material_id, line_id, spool_volume.spool_volume_avg
+                    ON spool_shifted.material_id = spool_volume.material_id
+                    AND spool_shifted.shift_date = spool_volume.shift_date
+                    AND spool_shifted.shift = spool_volume.shift
+                GROUP BY spool_shifted.material_id, spool_shifted.line_id, spool_shifted.shift_date, spool_shifted.shift, spool_volume.spool_volume_avg, material_specs.density
             ),
             wip_spools AS (
                 SELECT
-                    all_spools.material_id,
-                    line_id,
-                    count(*) AS wip_spools,
-                    ROUND(SUM(meters_scanned) / material_specs.spool_length_min) AS wip_spools_adj,
+                    spool_shifted.material_id,
+                    spool_shifted.line_id,
+                    spool_shifted.shift_date,
+                    spool_shifted.shift,
+                    COUNT(*) AS wip_spools,
+                    ROUND(SUM(spool_shifted.meters_scanned) / material_specs.spool_length_min) AS wip_spools_adj,
                     material_specs.spool_length_min
-                FROM all_spools
+                FROM spool_shifted
                 LEFT JOIN material_specs
-                    ON all_spools.material_id = material_specs.material_id
+                    ON spool_shifted.material_id = material_specs.material_id
                 WHERE
-                    status = "000"
-                GROUP BY material_id, line_id
+                    spool_shifted.status = '000'
+                GROUP BY spool_shifted.material_id, spool_shifted.line_id, spool_shifted.shift_date, spool_shifted.shift, material_specs.spool_length_min
             ),
             qc_spools AS (
                 SELECT
-                    all_spools.material_id,
-                    line_id,
-                    count(*) AS qc_spools,
-                    ROUND(SUM(meters_scanned) / material_specs.spool_length_min) AS qc_spools_adj
-                FROM all_spools
+                    spool_shifted.material_id,
+                    spool_shifted.line_id,
+                    spool_shifted.shift_date,
+                    spool_shifted.shift,
+                    COUNT(*) AS qc_spools,
+                    ROUND(SUM(spool_shifted.meters_scanned) / material_specs.spool_length_min) AS qc_spools_adj
+                FROM spool_shifted
                 LEFT JOIN material_specs
-                    ON all_spools.material_id = material_specs.material_id
+                    ON spool_shifted.material_id = material_specs.material_id
                 WHERE
-                    status = "001"
-                GROUP BY material_id, spool_length_min, line_id
+                    spool_shifted.status = '001'
+                GROUP BY spool_shifted.material_id, spool_shifted.line_id, spool_shifted.shift_date, spool_shifted.shift, material_specs.spool_length_min
             ),
             scrap_spools AS (
                 SELECT
-                    all_spools.material_id,
-                    line_id,
-                    count(*) AS scrap_spools,
-                    ROUND(SUM(meters_scanned) / material_specs.spool_length_min) AS scrap_spools_adj
-                FROM all_spools
+                    spool_shifted.material_id,
+                    spool_shifted.line_id,
+                    spool_shifted.shift_date,
+                    spool_shifted.shift,
+                    COUNT(*) AS scrap_spools,
+                    ROUND(SUM(spool_shifted.meters_scanned) / material_specs.spool_length_min) AS scrap_spools_adj
+                FROM spool_shifted
                 LEFT JOIN material_specs
-                    ON all_spools.material_id = material_specs.material_id
+                    ON spool_shifted.material_id = material_specs.material_id
                 WHERE
-                    status = "002"
-                GROUP BY all_spools.material_id, spool_length_min, line_id
+                    spool_shifted.status = '002'
+                GROUP BY spool_shifted.material_id, spool_shifted.line_id, spool_shifted.shift_date, spool_shifted.shift, material_specs.spool_length_min
             )
             SELECT
+                DATE_FORMAT(total_spools.shift_date, %s) as shift_date,
+                total_spools.shift,
                 total_spools.material_id,
                 total_spools.line_id,
-                spool_length_min as spool_len_const,
-                COALESCE(total_spools, 0) as total_spools,
-                total_kg,
-                COALESCE(wip_spools, 0) as wip_spools,
-                COALESCE(wip_spools_adj, 0) as wip_spools_adj,
-                COALESCE(qc_spools, 0) as qc_spools,
-                COALESCE(qc_spools_adj, 0) as qc_spools_adj,
-                COALESCE(scrap_spools, 0) as scrap_spools,
-                COALESCE(scrap_spools_adj, 0) as scrap_spools_adj
+                material_specs.spool_length_min AS spool_len_const,
+                COALESCE(total_spools.total_spools, 0) AS total_spools,
+                total_spools.total_kg,
+                COALESCE(wip_spools.wip_spools, 0) AS wip_spools,
+                COALESCE(wip_spools.wip_spools_adj, 0) AS wip_spools_adj,
+                COALESCE(qc_spools.qc_spools, 0) AS qc_spools,
+                COALESCE(qc_spools.qc_spools_adj, 0) AS qc_spools_adj,
+                COALESCE(scrap_spools.scrap_spools, 0) AS scrap_spools,
+                COALESCE(scrap_spools.scrap_spools_adj, 0) AS scrap_spools_adj
             FROM total_spools
             LEFT JOIN wip_spools
                 ON total_spools.material_id = wip_spools.material_id
                 AND total_spools.line_id = wip_spools.line_id
+                AND total_spools.shift_date = wip_spools.shift_date
+                AND total_spools.shift = wip_spools.shift
             LEFT JOIN qc_spools
                 ON total_spools.material_id = qc_spools.material_id
                 AND total_spools.line_id = qc_spools.line_id
+                AND total_spools.shift_date = qc_spools.shift_date
+                AND total_spools.shift = qc_spools.shift
             LEFT JOIN scrap_spools
                 ON total_spools.material_id = scrap_spools.material_id
                 AND total_spools.line_id = scrap_spools.line_id
-            ORDER BY total_spools DESC
+                AND total_spools.shift_date = scrap_spools.shift_date
+                AND total_spools.shift = scrap_spools.shift
+            LEFT JOIN material_specs
+                ON total_spools.material_id = material_specs.material_id
+            ORDER BY total_spools.shift_date DESC, total_spools.shift DESC, total_spools.total_spools DESC;
         """
+    
 
         
         params_spool_counts = (
-            start_date, end_date
+            start_date, end_date, "%Y-%m-%d %H:%i:%s", 
         )
 
         results_spool_counts = fetch(query_spool_counts, params_spool_counts)
@@ -2131,6 +2180,8 @@ def get_view_lot_analytics():
 
         results_efficiency = fetch(query_efficiency, params_efficiency)
 
+        # Helper function to calculate the spools created
+        net_spools_created = {}
 
         query_spool_counts = """
             WITH all_spools AS (
@@ -2623,8 +2674,6 @@ def get_runtime_goals():
     start_date = request.args.get("start_date")
     end_date = request.args.get("end_date")
 
-    start_date = "2025-01-01"
-    end_date = "2025-01-07"
 
     try:
         cnx = msc.connect(**IGNITION_DB_CLUSTER)

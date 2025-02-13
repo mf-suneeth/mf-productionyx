@@ -772,7 +772,7 @@ function Overview() {
             {uptimeData && uptimeData.produced[hoveredMaterial].count["gs"]}/
             {goalsData && goalsData?.raw[hoveredMaterial]
               ? goalsData?.raw[hoveredMaterial]
-              : "add goal"}
+              : 0}
           </div>
           <div className="" style={{ fontWeight: 200 }}>
             Scrapped
@@ -782,7 +782,7 @@ function Overview() {
             {uptimeData && uptimeData.produced[hoveredMaterial].count["sc"]}/
             {goalsData && goalsData?.raw[hoveredMaterial]
               ? goalsData?.raw[hoveredMaterial]
-              : "add goal"}
+              : 0}
           </div>
           <div className="" style={{ fontWeight: 200 }}>
             Quality Control
@@ -867,7 +867,7 @@ function Overview() {
               ).toFixed(2)}%`}
           </div>
           <div className="" style={{}}>
-            Primary Reason: wip -- [spool too short], [out of spec low]
+            Primary Reason:
           </div>
           <div className="" style={{}}>
             QC rate:{" "}
